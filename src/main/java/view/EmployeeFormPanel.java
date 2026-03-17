@@ -252,11 +252,15 @@ public String[] validateAndGetFormData() throws IllegalArgumentException {
             throw new IllegalArgumentException(labels[i] + " must be a valid number (e.g. 1000.00).");
         }
     }
-
+    
+    if (!data[0].matches("\\d{5}")) {
+        throw new IllegalArgumentException("Employee # must be exactly 5 digits (e.g., 10001).");
+    }
+    
     // bday at age need 18 up
     String bdayStr = data[3].trim();
 
-// 1. Regex for MM/DD/YYYY (Month 01-12, Day 01-31)
+    // Regex for MM/DD/YYYY (Month 01-12, Day 01-31)
     if (!bdayStr.matches("^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(19|20)\\d\\d$")) {
      throw new IllegalArgumentException("Birthday format must be: MM/DD/YYYY (e.g., 01/27/1989)");
 }
@@ -272,9 +276,9 @@ public String[] validateAndGetFormData() throws IllegalArgumentException {
     if (age < 18) {
         throw new IllegalArgumentException("Employee must be at least 18 years old. Current age: " + age);
     }
-} catch (DateTimeParseException e) {
+    } catch (DateTimeParseException e) {
     throw new IllegalArgumentException("Invalid date value. Please check if the month and day are correct.");
-}
+    }
 
     // phone number based sa csv
     if (!data[5].matches("\\d{3}-\\d{3}-\\d{3}")) {
@@ -282,12 +286,29 @@ public String[] validateAndGetFormData() throws IllegalArgumentException {
     }
 
     // sss format 
-    if (!data[6].matches("\\d{2}-\\d{7}-\\d{1}")) 
+    if (!data[6].matches("\\d{2}-\\d{7}-\\d{1}")) {
         throw new IllegalArgumentException("SSS # format: 00-0000000-0");
+    }
+    //Philhealth format
+    if (!data[7].matches("\\d{12}")) {
+        throw new IllegalArgumentException("PhilHealth # must be exactly 12 digits (no dashes or letters).");
+    }
+    
      // tin id format
     if (!data[8].matches("\\d{3}-\\d{3}-\\d{3}-\\d{3}")) 
         throw new IllegalArgumentException("TIN # format: 000-000-000-000");
 
+    //pag ibig format
+    if (!data[9].matches("\\d{12}")) {
+        throw new IllegalArgumentException("Pag-ibig # must be exactly 12 digits (no dashes or letters).");
+    }
+    
+    // Employment Status format
+    String status = data[10].trim();
+    if (!status.equalsIgnoreCase("Regular") && !status.equalsIgnoreCase("Probationary")) {
+        throw new IllegalArgumentException("Status must be 'Regular' or 'Probationary'.");
+    }
+        
     return data;
 }
   
