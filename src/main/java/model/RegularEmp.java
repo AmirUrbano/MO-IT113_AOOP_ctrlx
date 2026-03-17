@@ -66,7 +66,13 @@ public class RegularEmp extends Employee {
 
     @Override
     public double calculateGrossSalary(double hoursWorked) { return super.calculateGrossSalary(hoursWorked); }
-
+    @Override
+    public double calculateAdjustment(double overtimeHours) {
+    return super.calculateAdjustment(overtimeHours); }
+    @Override
+    public double calculateAdjustment(int totalMinutesLate) {
+    return super.calculateAdjustment(totalMinutesLate);}
+    
 
     @Override
     public double calculateWithholdingTax(double grossSalary) {return super.calculateWithholdingTax(grossSalary); }
