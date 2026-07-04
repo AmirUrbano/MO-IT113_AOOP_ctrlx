@@ -23,7 +23,7 @@ public double totalMonthlyGrossSalary;
     public double sssDeduction, philHealthDeduction, pagIbigDeduction, taxDeduction;
     public double totalLateDeductions;
     public double totalAllowances;
-    public double totalMonthlyNetSalary; // I used your specific variable name here
+    public double totalMonthlyNetSalary; 
     public int totalLateDays;;
 
     public PayrollResult(String employeeId, String lastName, String firstName, String sssNumber, String philHealth, String tinNumber, String pagIbig, String status, String position, double basicSalary, double riceSubsidy, double phoneAllowance, double clothingAllowance, double grossSemiMonthlyRate, double hourlyRate, double totalMonthlyGrossSalary, double sssDeduction, double philHealthDeduction, double pagIbigDeduction, double taxDeduction, double totalLateDeductions, double totalAllowances, double totalMonthlyNetSalary, int totalLateDays) {

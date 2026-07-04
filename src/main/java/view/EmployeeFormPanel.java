@@ -280,7 +280,7 @@ public String[] validateAndGetFormData() throws IllegalArgumentException {
     throw new IllegalArgumentException("Invalid date value. Please check if the month and day are correct.");
     }
 
-    // phone number based sa csv
+    // phone number based sa data
     if (!data[5].matches("\\d{3}-\\d{3}-\\d{3}")) {
         throw new IllegalArgumentException("Phone Number format: 000-000-000");
     }

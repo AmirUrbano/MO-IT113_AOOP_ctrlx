@@ -16,7 +16,7 @@ public abstract class Employee implements PayrollCalculations, EmployeePermissio
    protected String lastName, firstName, birthday, address, phoneNumber;
     
     // Government number and Employment info
-    protected String sssNumber, philHealth, tinNumber, pagIbig, status, position, supervisor;
+    protected String sssNumber, philHealth, tinNumber, pagIbig, status, position, supervisor, department;
     // Financials
    protected double basicSalary, riceSubsidy, phoneAllowance, clothingAllowance;
     protected double grossSemiMonthlyRate, hourlyRate;
@@ -24,7 +24,7 @@ public abstract class Employee implements PayrollCalculations, EmployeePermissio
     public Employee(String employeeId, String lastName, String firstName, String birthday,
                     String address, String phoneNumber, String sssNumber, String philHealth,
                     String tinNumber, String pagIbig, String status, String position,
-                    String supervisor, double basicSalary, double riceSubsidy,
+                    String supervisor, String department, double basicSalary, double riceSubsidy,
                     double phoneAllowance, double clothingAllowance,
                     double grossSemiMonthlyRate, double hourlyRate) {
         
@@ -45,6 +45,7 @@ public abstract class Employee implements PayrollCalculations, EmployeePermissio
         this.status = sanitize(status);
         this.position = sanitize(position);
         this.supervisor = sanitize(supervisor);
+        this.department = sanitize(department);
         
         // Assign Numerics
         this.basicSalary = basicSalary;
@@ -142,16 +143,17 @@ public abstract class Employee implements PayrollCalculations, EmployeePermissio
     else if (taxableIncome <= 666666) return 40833.33 + (taxableIncome - 166667) * 0.32;
     else return 200833.33 + (taxableIncome - 666667) * 0.35;
 }
-    @Override public boolean canViewDatabase() { return false; }
-    @Override public boolean canViewAllRecords() { return false; }
-    @Override public boolean canAddEmployee() { return false; }
-    @Override public boolean canDeleteEmployee() { return false; }
-    @Override public boolean canEditBasicInfo() { return false; }
-    @Override public boolean canEditFinancials() { return false; }
-    @Override public boolean canFileLeave() { return false; }
-    @Override public boolean canApproveLeave() { return false; }
-    @Override public boolean canAccessSystemTools() {return false;}
-    @Override public boolean canComputePayroll() {return false;}
+ @Override public abstract boolean canViewDatabase();
+@Override public abstract boolean canViewAllRecords();
+@Override public abstract boolean canAddEmployee();
+@Override public abstract boolean canDeleteEmployee();
+@Override public abstract boolean canEditBasicInfo();
+@Override public abstract boolean canEditFinancials();
+@Override public abstract boolean canComputePayroll();
+@Override public abstract boolean canFileLeave();
+@Override public abstract boolean canApproveLeave();
+@Override public abstract boolean canAccessSystemTools();
+@Override public abstract boolean isProtectedRole();
     
     // Getters
     public double getHourlyRate() { return hourlyRate; }
@@ -175,7 +177,7 @@ public abstract class Employee implements PayrollCalculations, EmployeePermissio
     public String getPagIbig() { return pagIbig; }
     public String getSupervisor() { return supervisor; }
     public double getGrossSemiMonthlyRate() { return grossSemiMonthlyRate; }
-    
+    public String getDepartment() { return department; }
     // Setter methods for updating employee data
     public void setLastName(String lastName) { this.lastName = sanitize(lastName); }
     public void setFirstName(String firstName) { this.firstName = sanitize(firstName); }
@@ -189,7 +191,7 @@ public abstract class Employee implements PayrollCalculations, EmployeePermissio
     public void setStatus(String status) { this.status = sanitize(status); }
     public void setPosition(String position) { this.position = sanitize(position); }
     public void setSupervisor(String supervisor) { this.supervisor = sanitize(supervisor); }
-    
+    public void setDepartment(String department) { this.department = sanitize(department); }
     public void setBasicSalary(double basicSalary) { this.basicSalary = basicSalary; }
     public void setRiceSubsidy(double riceSubsidy) { this.riceSubsidy = riceSubsidy; }
     public void setPhoneAllowance(double phoneAllowance) { this.phoneAllowance = phoneAllowance; }

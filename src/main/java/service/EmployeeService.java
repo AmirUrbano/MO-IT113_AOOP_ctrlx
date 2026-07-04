@@ -51,7 +51,7 @@ public class EmployeeService {
     }
    
    public boolean createAndAddEmployee(String[] rawData) {
-    Employee newEmployee = model.EmployeeStatus.createFromCsv(rawData);
+    Employee newEmployee = model.EmployeeStatus.createFromDb(rawData); // MIDDLEMAN returns the correct Child Object. 
     
     if (newEmployee == null) {
         logger.warning("Data transformation failed in createAndAddEmployee.");
@@ -63,27 +63,17 @@ public class EmployeeService {
     
    public boolean deleteEmployee(String employeeId) {
        
-    Employee target = employeeList.stream()
-            .filter(emp -> emp.getEmployeeId().equals(employeeId))
-            .findFirst()
-            .orElse(null);
+    Employee target = findEmployeeById(employeeId);
 
     if (target == null) {
         logger.warning("Delete failed: Employee ID " + employeeId + " not found.");
         return false;
     }
 
-    String pos = target.getPosition();
-    
-    if (pos.equalsIgnoreCase("Chief Executive Officer") || 
-        pos.equalsIgnoreCase("HR Manager") || 
-        pos.equalsIgnoreCase("Payroll Manager") || 
-        pos.equalsIgnoreCase("IT Operations and Systems") ||
-        pos.equalsIgnoreCase("Chief Operating Officer") ||
-        pos.equalsIgnoreCase("Chief Finance Officer")) {
-        
-        logger.severe("SECURITY ALERT: Attempted to delete protected role: " + pos);
-        throw new IllegalStateException("Access Denied: The position '" + pos + "' is a protected administrative role and cannot be deleted.");
+
+    if (target.isProtectedRole()) {
+        logger.severe("SECURITY ALERT: Attempted to delete protected role: " + target.getPosition());
+        throw new IllegalStateException("Access Denied: The position '" + target.getPosition() + "' is a protected administrative role and cannot be deleted.");
     }
    
     boolean isDeletedFromDb = employeeDAO.deleteFromDatabase(employeeId);

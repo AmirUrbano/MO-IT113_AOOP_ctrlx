@@ -28,4 +28,7 @@ public interface EmployeePermissions {
     //IT specifics
     boolean canAccessSystemTools();
     
+    // protected roles
+    boolean isProtectedRole();
+    
 }

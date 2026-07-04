@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 7.0.6.final using JasperReports Library version 6.19.0  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="attendance_report" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="0dabcb50-018d-4443-90fb-46152dab8af1">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="aoop_s2101"/>
+	<parameter name="EmpIDParameter" class="java.lang.String"/>
+	<parameter name="YearParameter" class="java.lang.Integer"/>
+	<parameter name="MonthParameter" class="java.lang.Integer"/>
+	<parameter name="LogoParameter" class="java.io.InputStream"/>
+	<queryString language="SQL">
+		<![CDATA[WITH RECURSIVE DaysOfMonth AS (
+    SELECT STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d') AS date_val
+    UNION ALL
+    SELECT date_val + INTERVAL 1 DAY
+    FROM DaysOfMonth
+    WHERE date_val < LAST_DAY(STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d'))
+)
+SELECT 
+    e.employee_id, 
+    CONCAT(e.first_name, ' ', e.last_name) AS full_name, 
+    e.position, 
+    e.department,
+    d.date_val AS log_date,
+    DATE_FORMAT(d.date_val, '%a') AS day_name,
+    a.time_in,
+
+    IF(a.time_in IS NULL, '-', DATE_FORMAT(ADDTIME(a.time_in, '04:00:00'), '%h:%i %p')) AS break_out,
+
+    IF(a.time_in IS NULL, '-', DATE_FORMAT(ADDTIME(a.time_in, '05:00:00'), '%h:%i %p')) AS break_in,
+    a.time_out,
+
+    IF(a.time_in IS NOT NULL AND a.time_out IS NOT NULL, 
+       ROUND(TIME_TO_SEC(TIMEDIFF(TIMEDIFF(a.time_out, a.time_in), '01:00:00')) / 3600, 2), 
+       0) AS hours_worked,
+    CASE 
+        WHEN DAYNAME(d.date_val) IN ('Saturday', 'Sunday') THEN 'Weekend'
+        WHEN h.holiday_name IS NOT NULL THEN CONCAT('Holiday (', h.holiday_name, ')')
+        WHEN a.time_in IS NULL THEN '-'
+        ELSE 'Present'
+    END AS remarks
+FROM DaysOfMonth d
+CROSS JOIN employees e ON e.employee_id = $P{EmpIDParameter}
+LEFT JOIN attendance_logs a ON d.date_val = a.log_date AND a.employee_id = e.employee_id
+LEFT JOIN holidays h ON d.date_val = h.holiday_date
+ORDER BY d.date_val ASC;]]>
+	</queryString>
+	<field name="employee_id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="employee_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="employee_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="full_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="full_name"/>
+		<property name="com.jaspersoft.studio.field.label" value="full_name"/>
+	</field>
+	<field name="position" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="position"/>
+		<property name="com.jaspersoft.studio.field.label" value="position"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="department" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="department"/>
+		<property name="com.jaspersoft.studio.field.label" value="department"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="log_date" class="java.sql.Date">
+		<property name="com.jaspersoft.studio.field.name" value="date_val"/>
+		<property name="com.jaspersoft.studio.field.label" value="log_date"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="attendance_logs"/>
+	</field>
+	<field name="day_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="day_name"/>
+		<property name="com.jaspersoft.studio.field.label" value="day_name"/>
+	</field>
+	<field name="time_in" class="java.sql.Time">
+		<property name="com.jaspersoft.studio.field.name" value="time_in"/>
+		<property name="com.jaspersoft.studio.field.label" value="time_in"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="attendance_logs"/>
+	</field>
+	<field name="break_out" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="break_out"/>
+		<property name="com.jaspersoft.studio.field.label" value="break_out"/>
+	</field>
+	<field name="break_in" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="break_in"/>
+		<property name="com.jaspersoft.studio.field.label" value="break_in"/>
+	</field>
+	<field name="time_out" class="java.sql.Time">
+		<property name="com.jaspersoft.studio.field.name" value="time_out"/>
+		<property name="com.jaspersoft.studio.field.label" value="time_out"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="attendance_logs"/>
+	</field>
+	<field name="hours_worked" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hours_worked"/>
+		<property name="com.jaspersoft.studio.field.label" value="hours_worked"/>
+	</field>
+	<field name="remarks" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="remarks"/>
+		<property name="com.jaspersoft.studio.field.label" value="remarks"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="99" splitType="Stretch">
+			<frame>
+				<reportElement mode="Opaque" x="-20" y="-20" width="595" height="119" backcolor="#006699" uuid="6301268d-e0f5-46c7-a5a3-5754b1f40052"/>
+				<staticText>
+					<reportElement x="180" y="20" width="234" height="43" forecolor="#FFFFFF" uuid="ad410b40-b29f-4fec-bb72-35d2c7630157"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="34" isBold="true" isItalic="true"/>
+					</textElement>
+					<text><![CDATA[MotorPH]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="150" y="70" width="300" height="30" uuid="07bbd9f6-1518-4843-b17d-ff2e0610426e"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="9"/>
+					</textElement>
+					<text><![CDATA[      7 Jupiter Avenue cor. F. Sandoval Jr., Bagong Nayon, Quezon City]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="147" y="60" width="300" height="19" uuid="336b3b13-65e3-46c5-ace9-f1a449913b0e"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="9"/>
+					</textElement>
+					<text><![CDATA[      Phone: (028) 911-5071 / (028) 911-5072 / (028) 911-5073 ]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="140" y="80" width="300" height="30" uuid="f731b195-349a-48e0-b702-1836c842fada"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
+						<font size="9"/>
+					</textElement>
+					<text><![CDATA[      Email: corporate@motorph.com]]></text>
+				</staticText>
+				<image scaleImage="FillFrame">
+					<reportElement x="1" y="0" width="163" height="119" uuid="440a11d6-246f-43a1-81e4-096ace396d6f"/>
+					<imageExpression><![CDATA[$P{LogoParameter}]]></imageExpression>
+				</image>
+			</frame>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="85" splitType="Stretch">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<staticText>
+				<reportElement x="170" y="4" width="233" height="39" forecolor="#5305A1" uuid="514427a5-154e-4ec0-ad94-cb34db35edad"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="15" isBold="true" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Employee Time Card]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement mode="Opaque" x="-19" y="44" width="593" height="40" forecolor="#0278B3" backcolor="#1A4469" uuid="6108d48d-9b44-4ec6-917f-f3c1a544a3dc"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="80" y="46" width="60" height="12" forecolor="#FFFFFF" uuid="6258a706-587a-4c29-bb36-87007b0759d8"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Employee #:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="80" y="57" width="60" height="10" forecolor="#FFFFFF" uuid="b7522a83-585c-4f69-aa72-4eb3c284e37d"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Employee Name:]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement x="140" y="46" width="100" height="23" backcolor="#F7E4E4" uuid="bee6b475-bc72-4a06-9869-0873d10b500e"/>
+			</rectangle>
+			<textField>
+				<reportElement x="140" y="47" width="74" height="10" uuid="3ec8f487-6767-41af-a058-a80fe4b18b89"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{employee_id}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="139" y="58" width="76" height="9" uuid="40381e81-1ea7-4898-9e98-8770cf3f5bca"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{full_name}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement mode="Transparent" x="318" y="75" width="42" height="10" forecolor="#FFFFFF" uuid="ee38e699-0d53-49d6-93d5-1ff689390bb2"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Time Out]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="421" y="75" width="96" height="10" forecolor="#FFFFFF" uuid="57849fe9-1f96-4ad2-9b06-c24daee98606"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Remarks]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="98" y="75" width="36" height="10" forecolor="#FFFFFF" uuid="d74b7ce2-ff73-4b7d-bb7f-6917f3dfef21"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Day]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="265" y="75" width="42" height="9" forecolor="#FFFFFF" uuid="97e17fed-d392-494b-ac93-7f61d70c8114"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Break In]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="198" y="75" width="50" height="10" forecolor="#FFFFFF" uuid="1e63f493-9366-4df9-846e-0dc58612bbcb"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Break Out]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="53" y="75" width="30" height="10" forecolor="#FFFFFF" uuid="34e3f4f8-296f-4dcb-8b1f-506789dbe5d4"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="142" y="75" width="46" height="10" forecolor="#FFFFFF" uuid="360bef06-3a45-4609-a5a9-0362f49d3627"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Time In]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="498" y="59" width="53" height="10" uuid="3bcf8fe4-0d2a-473f-9e0a-287f4ef415ff"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{department}]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement x="433" y="46" width="124" height="23" backcolor="#F7E4E4" uuid="d404f87c-e8cb-4164-8cf4-8e22d85a40c0"/>
+			</rectangle>
+			<textField>
+				<reportElement x="433" y="47" width="74" height="10" uuid="02db043f-e968-4267-a774-e066b9670fee"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.text.DateFormatSymbols().getMonths()[$P{MonthParameter} - 1] + " " + $P{YearParameter}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement mode="Transparent" x="362" y="58" width="70" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="443748b0-8d89-4a4d-ab35-d4154b74a4e4">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Position/Department:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="433" y="57" width="77" height="12" uuid="faf8307b-5f99-4267-86d7-7f5fd301123c"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{position}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement mode="Transparent" x="363" y="46" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="18d41ecf-4707-4e07-9c2b-2028dfe399a7">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Month:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="505" y="57" width="50" height="12" uuid="da8c4048-9fb3-458e-b235-59d027ab838e"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{department}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="12" splitType="Stretch">
+			<textField>
+				<reportElement x="188" y="-1" width="70" height="10" uuid="134c91e9-6c6c-46c5-a1d2-3699b4b12fde"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{break_out}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="265" y="-1" width="42" height="10" uuid="52c29dd1-6deb-4c38-93f0-d31fd5b7c433"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{break_in}]]></textFieldExpression>
+			</textField>
+			<textField pattern="h:mm a" isBlankWhenNull="true">
+				<reportElement x="142" y="-1" width="46" height="10" uuid="058e7232-6699-4404-90e1-e751b4bf8b21"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{time_in}]]></textFieldExpression>
+			</textField>
+			<textField pattern="MMMM d">
+				<reportElement x="33" y="-1" width="70" height="10" forecolor="#000000" uuid="5d9fdb31-635b-4179-919f-4244fea8eacf"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{log_date}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="90" y="-1" width="52" height="10" uuid="6edd8818-c3fd-4ea1-8d15-9f1e78c09f8d"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{day_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="421" y="0" width="96" height="9" uuid="29362854-1193-4201-b62d-29fdf327110c"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{remarks}]]></textFieldExpression>
+			</textField>
+			<textField pattern="h:mm a" isBlankWhenNull="true">
+				<reportElement x="318" y="-1" width="42" height="10" uuid="2910833f-f243-4486-b9a7-1e087160ebd7"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{time_out}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="372" y="-1" width="48" height="10" uuid="372755c4-0431-49a5-b5fd-324d6eca5d93"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hours_worked}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="360" y="-10" width="74" height="10" forecolor="#FFFFFF" uuid="65c8db9c-39fd-4035-b515-15fa0f0960df"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total Hours Worked]]></text>
+			</staticText>
+		</band>
+	</detail>
+</jasperReport>

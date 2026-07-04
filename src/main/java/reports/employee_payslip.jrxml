@@ -1,0 +1,814 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 7.0.6.final using JasperReports Library version 6.19.0  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="employee_payslip" pageWidth="595" pageHeight="600" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="c79f5802-f99d-4f29-8036-a323034af186">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="aoop_s2101"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="14"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="980"/>
+	<parameter name="EmpIDParameter" class="java.lang.String"/>
+	<parameter name="MonthParameter" class="java.lang.Integer"/>
+	<parameter name="YearParameter" class="java.lang.Integer"/>
+	<parameter name="LogoParameter" class="java.io.InputStream"/>
+	<queryString>
+		<![CDATA[SELECT
+    e.employee_id AS employee_num,
+    CONCAT(e.last_name, ', ', e.first_name) AS employee_name,
+    e.position,
+    e.department,
+    e.basic_salary AS monthly_salary,
+    e.hourly_rate,
+    
+    STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d') AS start_date,
+    LAST_DAY(STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d')) AS end_date,
+    
+    COALESCE(att.total_days, 0) AS days_worked,
+    COALESCE(att.total_ot_hours, 0) AS overtime_hours,
+    ROUND(COALESCE(att.total_ot_hours, 0) * e.hourly_rate * 1.25, 2) AS overtime_pay,
+    
+    COALESCE(att.total_late_minutes, 0) AS late_minutes,
+    ROUND(COALESCE(att.total_late_minutes, 0) * (e.hourly_rate / 60), 2) AS late_deduction,
+    
+    ROUND(e.basic_salary + (COALESCE(att.total_ot_hours, 0) * e.hourly_rate * 1.25), 2) AS gross_income,
+
+    COALESCE(e.rice_subsidy, 0) AS rice_subsidy,
+    COALESCE(e.phone_allowance, 0) AS phone_allowance,
+    COALESCE(e.clothing_allowance, 0) AS clothing_allowance,
+    ROUND(COALESCE(e.rice_subsidy, 0) + COALESCE(e.phone_allowance, 0) + COALESCE(e.clothing_allowance, 0), 2) AS total_benefits,
+
+    -- SSS, PhilHealth, Pag-IBIG Matrix
+    CASE
+        WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00
+    END AS social_security_system,
+
+    CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE ROUND((e.basic_salary * 0.03) / 2, 2) END AS philhealth,
+    CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END AS pag_ibig,
+
+    ROUND(e.basic_salary * 0.12, 2) AS withholding_tax,
+
+    -- TOTAL DEDUCTIONS
+    ROUND(
+        (CASE WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END) +
+        (CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE (e.basic_salary * 0.03) / 2 END) +
+        (CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) END) +
+        (e.basic_salary * 0.12) +
+        (COALESCE(att.total_late_minutes, 0) * (e.hourly_rate / 60)),
+        2
+    ) AS total_deductions,
+
+    -- TAKE HOME PAY
+    ROUND(
+        e.basic_salary
+        - (CASE WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END)
+        - (CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE (e.basic_salary * 0.03) / 2 END)
+        - (CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) END)
+        - (e.basic_salary * 0.12)
+        - (COALESCE(att.total_late_minutes, 0) * (e.hourly_rate / 60))
+        + (COALESCE(att.total_ot_hours, 0) * e.hourly_rate * 1.25)
+        + COALESCE(e.rice_subsidy, 0) + COALESCE(e.phone_allowance, 0) + COALESCE(e.clothing_allowance, 0),
+        2
+    ) AS take_home_pay
+
+FROM employees e
+LEFT JOIN (
+    SELECT
+        employee_id,
+        COUNT(log_date) AS total_days,
+        SUM(CASE WHEN TIME_TO_SEC(TIMEDIFF(time_out, time_in))/3600 > 9 THEN (TIME_TO_SEC(TIMEDIFF(time_out, time_in))/3600) - 9 ELSE 0 END) AS total_ot_hours,
+        
+        -- grace period 15mins
+        SUM(CASE WHEN time_in > '08:15:00' THEN TIME_TO_SEC(TIMEDIFF(time_in, '08:00:00')) / 60 ELSE 0 END) AS total_late_minutes
+    FROM attendance_logs
+    WHERE MONTH(log_date) = $P{MonthParameter} AND YEAR(log_date) = $P{YearParameter}
+    GROUP BY employee_id
+) att ON e.employee_id = att.employee_id
+WHERE e.employee_id = $P{EmpIDParameter};]]>
+	</queryString>
+	<field name="employee_num" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="employee_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="employee_num"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="employee_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="employee_name"/>
+		<property name="com.jaspersoft.studio.field.label" value="employee_name"/>
+	</field>
+	<field name="position" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="position"/>
+		<property name="com.jaspersoft.studio.field.label" value="position"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="department" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="department"/>
+		<property name="com.jaspersoft.studio.field.label" value="department"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="monthly_salary" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="basic_salary"/>
+		<property name="com.jaspersoft.studio.field.label" value="monthly_salary"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="hourly_rate" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hourly_rate"/>
+		<property name="com.jaspersoft.studio.field.label" value="hourly_rate"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="start_date" class="java.sql.Date">
+		<property name="com.jaspersoft.studio.field.name" value="start_date"/>
+		<property name="com.jaspersoft.studio.field.label" value="start_date"/>
+	</field>
+	<field name="end_date" class="java.sql.Date">
+		<property name="com.jaspersoft.studio.field.name" value="end_date"/>
+		<property name="com.jaspersoft.studio.field.label" value="end_date"/>
+	</field>
+	<field name="days_worked" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="days_worked"/>
+		<property name="com.jaspersoft.studio.field.label" value="days_worked"/>
+	</field>
+	<field name="overtime_hours" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="overtime_hours"/>
+		<property name="com.jaspersoft.studio.field.label" value="overtime_hours"/>
+	</field>
+	<field name="overtime_pay" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="overtime_pay"/>
+		<property name="com.jaspersoft.studio.field.label" value="overtime_pay"/>
+	</field>
+	<field name="late_minutes" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="late_minutes"/>
+		<property name="com.jaspersoft.studio.field.label" value="late_minutes"/>
+	</field>
+	<field name="late_deduction" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="late_deduction"/>
+		<property name="com.jaspersoft.studio.field.label" value="late_deduction"/>
+	</field>
+	<field name="gross_income" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="gross_income"/>
+		<property name="com.jaspersoft.studio.field.label" value="gross_income"/>
+	</field>
+	<field name="rice_subsidy" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="rice_subsidy"/>
+		<property name="com.jaspersoft.studio.field.label" value="rice_subsidy"/>
+	</field>
+	<field name="phone_allowance" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="phone_allowance"/>
+		<property name="com.jaspersoft.studio.field.label" value="phone_allowance"/>
+	</field>
+	<field name="clothing_allowance" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="clothing_allowance"/>
+		<property name="com.jaspersoft.studio.field.label" value="clothing_allowance"/>
+	</field>
+	<field name="total_benefits" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="total_benefits"/>
+		<property name="com.jaspersoft.studio.field.label" value="total_benefits"/>
+	</field>
+	<field name="social_security_system" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="social_security_system"/>
+		<property name="com.jaspersoft.studio.field.label" value="social_security_system"/>
+	</field>
+	<field name="philhealth" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="philhealth"/>
+		<property name="com.jaspersoft.studio.field.label" value="philhealth"/>
+	</field>
+	<field name="pag_ibig" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="pag_ibig"/>
+		<property name="com.jaspersoft.studio.field.label" value="pag_ibig"/>
+	</field>
+	<field name="withholding_tax" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="withholding_tax"/>
+		<property name="com.jaspersoft.studio.field.label" value="withholding_tax"/>
+	</field>
+	<field name="total_deductions" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="total_deductions"/>
+		<property name="com.jaspersoft.studio.field.label" value="total_deductions"/>
+	</field>
+	<field name="take_home_pay" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="take_home_pay"/>
+		<property name="com.jaspersoft.studio.field.label" value="take_home_pay"/>
+	</field>
+	<background>
+		<band/>
+	</background>
+	<title>
+		<band height="80">
+			<frame>
+				<reportElement mode="Opaque" x="-20" y="-20" width="595" height="100" backcolor="#006699" uuid="4487e280-54b5-4d6e-8f91-cd32b56cc268"/>
+				<staticText>
+					<reportElement x="180" y="20" width="234" height="43" forecolor="#FFFFFF" uuid="ecbe9d1d-ca20-4d3b-8a33-019dd8c82bc3"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="34" isBold="true" isItalic="true"/>
+					</textElement>
+					<text><![CDATA[MotorPH]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="150" y="70" width="300" height="30" uuid="2d8986d8-685e-443a-9463-956ba33680b0"/>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font size="9"/>
+					</textElement>
+					<text><![CDATA[      7 Jupiter Avenue cor. F. Sandoval Jr., Bagong Nayon, Quezon City]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="147" y="60" width="300" height="19" uuid="b180cc8b-6535-40e1-9e37-1fab70563588"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="9"/>
+					</textElement>
+					<text><![CDATA[      Phone: (028) 911-5071 / (028) 911-5072 / (028) 911-5073 ]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="140" y="80" width="300" height="30" uuid="afd896b6-eaec-406e-9556-797e7566501a"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
+						<font size="9"/>
+					</textElement>
+					<text><![CDATA[      Email: corporate@motorph.com]]></text>
+				</staticText>
+				<image scaleImage="FillFrame">
+					<reportElement x="0" y="0" width="159" height="98" uuid="f84d4e2b-032f-4ae3-a5d4-71c5cf02d113"/>
+					<imageExpression><![CDATA[$P{LogoParameter}]]></imageExpression>
+				</image>
+			</frame>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="13"/>
+	</pageHeader>
+	<columnHeader>
+		<band height="21">
+			<line>
+				<reportElement x="-20" y="20" width="595" height="1" forecolor="#666666" uuid="aa2ad591-d873-4e25-a50e-264ac875a190"/>
+			</line>
+			<staticText>
+				<reportElement mode="Opaque" x="145" y="0" width="270" height="20" forecolor="#5305A1" uuid="f95dfecc-25cc-41f9-af2d-0c27cc5944e6"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Employee Payslip]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="376">
+			<rectangle>
+				<reportElement mode="Opaque" x="-20" y="0" width="595" height="40" forecolor="#0278B3" backcolor="#1A4469" uuid="be3601c3-fe50-4c10-bdc8-1bf3f623f1fb"/>
+			</rectangle>
+			<line>
+				<reportElement positionType="FixRelativeToBottom" x="-20" y="41" width="595" height="1" uuid="850b4c05-20e5-4233-8433-8ff3d60e6b3c"/>
+			</line>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="14" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="f50e5ba3-c8ae-4227-8aca-5303ceccba48">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Employee #:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="26" width="70" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="8cdbbb22-04c2-480c-8e39-033bcba5b407">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Employee Name:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="2" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="6182643a-5402-4c0a-b2e7-393f3df318a6">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Payslip #:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="380" y="26" width="80" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="f7ce6370-5a4d-4d28-965a-da0c090612f6">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Position/Department:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="381" y="14" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="2ff728ca-cdad-4f20-9439-46536213049e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Month:]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement mode="Opaque" x="-20" y="49" width="595" height="11" forecolor="#0278B3" backcolor="#1A4469" uuid="65909b7c-f0a1-4b77-9952-09463c3f756c"/>
+			</rectangle>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="48" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="35e050c9-6349-496e-b7e3-12a7c7c8acd1">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Earnings]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="60" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="d2a13c6d-26ce-46ad-a096-6db49350776d">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Monthly Salary]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="72" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="a0da8683-5c84-4eea-b8db-c6a557dbe7b4">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Hourly Rate]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="84" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="d2703f56-3a86-4610-a003-4a29712e69db">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Days Worked]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="96" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="aa432cc4-99c9-4589-9446-2e40f048afb0">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Overtime Hours]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="119" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="def1887e-0ac1-4c6f-8a90-118b41a26bdc">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[GROSS INCOME]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement mode="Opaque" x="-20" y="130" width="595" height="11" forecolor="#0278B3" backcolor="#1A4469" uuid="a6a82f31-ea00-4d7e-918d-66bd95e0b5c4"/>
+			</rectangle>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="129" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="cc23f76d-c06c-4b3d-9496-6ca16bfa80c6">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Benefits]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="141" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="e89956b6-286f-402a-a5f5-833e4675a2e5">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Rice Subsidy]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="153" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="b165465b-09a9-4754-b1fe-68d1a4fa131a">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Phone Allowance]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="165" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="97b4617f-a65c-42e9-86c9-34310ecab49b">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Clothing Allowance]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="177" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="baf4b136-f183-48d6-a872-f644dad4df29">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[TOTAL]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="199" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="39459caa-389a-4d48-b6c4-7c43befee49b">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Benefits]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement mode="Opaque" x="-20" y="200" width="595" height="11" forecolor="#0278B3" backcolor="#1A4469" uuid="bdfc04f4-8860-43df-9027-893f0005a63b"/>
+			</rectangle>
+			<staticText>
+				<reportElement mode="Transparent" x="82" y="200" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="b1d726e8-6a35-4cb6-b43d-feb5bef0f595">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Deductions]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="79" y="277" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="61631f4b-e5c2-4e9d-869c-747b8daa769d">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Total Deductions]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="224" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="77d9b346-2531-489d-8fd2-23fbd36c84ee">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Philhealth]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="236" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="89f1b897-18ae-41f9-b0cc-0d693ca9879c">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Pag-Ibig]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="248" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="22d2c188-7f25-4320-9dc6-0232a2310258">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Withholding Tax]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="212" width="79" height="12" forecolor="#000000" backcolor="#515155" uuid="d7af2f7c-f2e5-4eda-98f9-1af88658ccde">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Social Security System]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement mode="Opaque" x="-20" y="290" width="595" height="11" forecolor="#0278B3" backcolor="#1A4469" uuid="96c89969-6244-4bd7-b6d4-17eb56c4bb45"/>
+			</rectangle>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="289" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="dfae9298-e7db-4aef-bc35-53b0b2a26adb">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Summary]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="79" y="323" width="46" height="12" forecolor="#000000" backcolor="#515155" uuid="192645ce-b6db-466b-acbd-ed4cfb2ef9f7">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Deductions]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="300" width="79" height="12" forecolor="#000000" backcolor="#515155" uuid="41052d84-4c78-41ee-987f-c01b181d560e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Gross Income]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="311" width="35" height="12" forecolor="#000000" backcolor="#515155" uuid="ecf2dc77-41ed-43fb-b49c-0d74a8d598cc">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Benefits]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="79" y="335" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="97931afb-5211-4818-96b0-e12df6f2db9b">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[TAKE HOME PAY]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="125" y="14" width="71" height="12" uuid="3da2eef7-2928-453c-9369-7b2c969f2c3a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="18715c50-5998-4c3d-b683-dd1b281850a4"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{employee_num}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="140" y="26" width="70" height="12" uuid="e56cc76f-89f5-441b-8bab-8ab9fde0bde1">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="afe23d97-e721-485a-accb-c4a9f4561cb9"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{employee_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="453" y="26" width="72" height="12" uuid="35050bce-9eec-441c-983a-713297d22bd7">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="febb5a6c-d825-4f76-b620-347d9f7020ce"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{position}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="525" y="26" width="53" height="12" uuid="17a31f36-e09b-4cb5-bcba-654e00eee129">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="72a1042a-a6da-4d0f-9cac-902746fba2cf"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{department}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="115" y="2" width="43" height="12" uuid="3d9139ee-6f1c-4e38-848a-57598a45bce4"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["PS-" + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")) + "-" + $F{employee_num}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="60" width="63" height="12" uuid="7d1cc11e-4b24-402a-ad20-565777ef7ce0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="56412a35-87cc-4ce0-a14d-c6efaab3a7d3"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{monthly_salary}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="71" width="63" height="13" uuid="eb75fd9a-fc40-44f6-84d5-8bd76a1ec813">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="ab6ae481-935e-49f2-b9a5-f3bbf999c295"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hourly_rate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="84" width="60" height="12" uuid="ed16bb3f-9e1e-4728-b7f8-697ba12c01fb">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e5108abd-9eb2-42d8-85ca-58f5b7af5efd"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{days_worked}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="380" y="96" width="63" height="11" uuid="b818eced-d3eb-4004-9989-eda3b97d438e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2c80e38e-b95c-45a9-a505-65cbb43e23ab"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{overtime_hours}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="119" width="59" height="12" uuid="e07c1b54-8d1d-4f92-b9de-dfdc2124d8ce">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a7501f77-6810-4ed3-99bd-34b92d7f0598"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{gross_income}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="108" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="54673be4-c684-425d-bc04-c6d954b2c56a">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Overtime Pay]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="380" y="108" width="64" height="12" uuid="15909bfd-8da0-41e8-ac6c-8b4e966ccfb0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="3781ede2-1342-43ea-b0b1-7c8c434153df"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{overtime_pay}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="141" width="58" height="12" uuid="53fa19d0-755d-4e6e-a565-f6f65053bd59">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6460828b-dd9b-4fe0-a4f2-5ff3129d3072"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{rice_subsidy}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="153" width="73" height="11" uuid="9d621867-c9d8-49b8-8e58-873fe8e08900">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6822af0d-0e00-4cfd-968c-9a6405031b58"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{phone_allowance}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="164" width="73" height="12" uuid="9faeda4c-e10f-481b-b7d0-238b765c44bd">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e6f42ddf-08d9-4a65-bc87-fc45536c8f3e"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{clothing_allowance}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="176" width="64" height="12" uuid="7f7f9fb8-953b-4835-8e06-c24c9feb1e2c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="06bd4aec-bc06-4638-94d4-427725062fc6"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{total_benefits}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="212" width="100" height="12" uuid="b29a7109-bbfa-423f-8c3e-b2f618e17f0f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="77ce9e96-09fd-4856-8ee2-45d42fb530d4"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{social_security_system}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="224" width="50" height="12" uuid="a3a96991-e04c-433c-9dea-92c05becd7b3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d1322717-3037-468f-9b3a-fc09824372dc"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{philhealth}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="236" width="46" height="12" uuid="0ca09f6a-92e1-4800-8597-171b5d846f61">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c30c2197-152a-490a-a863-be1e051df881"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{pag_ibig}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="248" width="62" height="12" uuid="b9d98faf-55c1-40b1-aa6e-9273b4ba134f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="06e1a5a6-7bc5-4e70-a90a-4776ac0c7cd0"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{withholding_tax}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="277" width="64" height="12" uuid="794466ec-078f-44f5-8e88-f82426322c01">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2f45c2b8-5272-4969-8af7-fe566b9e08f3"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{total_deductions}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="260" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="fe2e8f64-241e-409a-9e9f-63ae5fcc3b59">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Late Deductions]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="407" y="14" width="36" height="12" uuid="7056f186-4111-4ded-9765-599d1ee1156a"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[java.text.DateFormatSymbols.getInstance(java.util.Locale.ENGLISH).getMonths()[$P{MonthParameter} - 1]]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="442" y="14" width="22" height="12" uuid="ac3c857c-9c85-41c3-8b0c-32bbc3458f33"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{YearParameter}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="379" y="260" width="66" height="9" uuid="73598220-98be-49d2-80cc-c66a7ed08441">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="52e78279-3b8f-46f2-a20a-106ae047e716"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{late_deduction}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="379" y="301" width="63" height="10" uuid="37996a6a-6167-4270-9b56-77421418abd1">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="13ca047c-adca-44c6-b21d-7cac3bfd8f0f"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{gross_income}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="379" y="310" width="63" height="12" uuid="608b3636-9461-43e2-aea1-1233f9da8eee">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="06bd4aec-bc06-4638-94d4-427725062fc6"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{total_benefits}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="379" y="322" width="64" height="12" uuid="f984030f-2158-4695-b519-c265ca9606b8">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2f45c2b8-5272-4969-8af7-fe566b9e08f3"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{total_deductions}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="379" y="335" width="65" height="12" uuid="72f53456-bbe5-4436-a5be-f5c9a8f8c024">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8fe6fa3e-11a2-447e-b505-96f03147f9cb"/>
+				</reportElement>
+				<textElement>
+					<font fontName="SansSerif" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{take_home_pay}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<columnFooter>
+		<band/>
+	</columnFooter>
+	<pageFooter>
+		<band/>
+	</pageFooter>
+	<summary>
+		<band/>
+	</summary>
+</jasperReport>

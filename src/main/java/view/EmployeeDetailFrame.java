@@ -36,8 +36,10 @@ import javax.swing.text.StyledDocument;
     private final boolean isReadOnlyMode;
     
     private JComboBox<String> monthComboBox;
+    private JComboBox<String> yearComboBox; 
     private JTextPane payrollResultArea;
     private JButton computeBtn;
+    private JButton viewPdfPayslipBtn; 
     private JButton timeInBtn;  
     private JButton timeOutBtn;  
     private JLabel summaryLabel; 
@@ -48,19 +50,17 @@ import javax.swing.text.StyledDocument;
     private JPanel payrollSectionPanel;
     private JScrollPane leaveHistoryScroll;
     
-    
     public EmployeeDetailFrame(Employee employee, Employee loggedInUser, boolean readOnly) {
-    this.employee = employee;
-    this.loggedInUser = loggedInUser;
-    this.isReadOnlyMode = readOnly;
-    this.employeeService = EmployeeService.getInstance(); 
-    this.payrollProcessor = PayrollService.getInstance(); 
-    
-    initializeGUI();
-    applySecurityVisibility();
-    refreshAllData(); 
-   
-}
+        this.employee = employee;
+        this.loggedInUser = loggedInUser;
+        this.isReadOnlyMode = readOnly;
+        this.employeeService = EmployeeService.getInstance(); 
+        this.payrollProcessor = PayrollService.getInstance(); 
+        
+        initializeGUI();
+        applySecurityVisibility();
+        refreshAllData(); 
+    }
 
     private void initializeGUI() {
         setTitle("MotorPH Employee Portal - " + employee.getFirstName() + " " + employee.getLastName());
@@ -69,19 +69,16 @@ import javax.swing.text.StyledDocument;
         setLayout(new BorderLayout(15, 15));
         setLocationRelativeTo(null);
 
-      
         JPanel northPanel = new JPanel(new BorderLayout());
         northPanel.add(createSummaryCard(), BorderLayout.NORTH);
         northPanel.add(createInfoCardPanel(), BorderLayout.CENTER);
         add(northPanel, BorderLayout.NORTH);
 
-     
         JPanel centerContainer = new JPanel(new BorderLayout(10, 10));
         centerContainer.add(createPayrollPanel(), BorderLayout.CENTER);
         centerContainer.add(createAttendancePanel(), BorderLayout.SOUTH);
         add(centerContainer, BorderLayout.CENTER);
 
-   
         add(createBottomPanel(), BorderLayout.SOUTH);
     }
 
@@ -142,7 +139,7 @@ import javax.swing.text.StyledDocument;
     }
 
     private JPanel createAttendancePanel() {
-        attendancePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 10)); // Assign to field
+        attendancePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 10)); 
         attendancePanel.setBorder(BorderFactory.createTitledBorder("Daily Attendance Control"));
         timeInBtn = new JButton("TIME IN");
         timeOutBtn = new JButton("TIME OUT");
@@ -155,27 +152,25 @@ import javax.swing.text.StyledDocument;
         timeInBtn.addActionListener(e -> handleAttendance(true));
         timeOutBtn.addActionListener(e -> handleAttendance(false));
 
-       attendancePanel.add(timeInBtn);
-       attendancePanel.add(timeOutBtn);
+        attendancePanel.add(timeInBtn);
+        attendancePanel.add(timeOutBtn);
         return attendancePanel;
     }
 
     private void handleAttendance(boolean isTimeIn) {
-     
         String msg = AttendanceService.getInstance().recordAttendance(employee.getEmployeeId(), isTimeIn);
         JOptionPane.showMessageDialog(this, msg);
         refreshAllData(); 
     }
 
     private void refreshAllData() {
-   
         leaveHistoryModel.setRowCount(0);
-        List<LeaveRequest> history = LeaveService.getInstance().getLeavesByEmployeeId(employee.getEmployeeId());
+        
+        List<LeaveRequest> history = LeaveService.getInstance().getLeaveHistoryForEmployee(employee.getEmployeeId());
         for (LeaveRequest lr : history) {
             leaveHistoryModel.addRow(new Object[]{lr.getRequestId(), lr.getLeaveType(), lr.getStartDate(), lr.getEndDate(), lr.getStatus()});
         }
 
-       
         LocalDate today = LocalDate.now();
         List<AttendanceRecord> records = AttendanceService.getInstance().getRecordsInRange(employee.getEmployeeId(), today, today);
         
@@ -184,14 +179,12 @@ import javax.swing.text.StyledDocument;
             timeOutBtn.setEnabled(false);
         } else {
             timeInBtn.setEnabled(false);
-            
             AttendanceRecord latest = records.get(records.size() - 1);
             boolean alreadyTimedOut = latest.getLogOutTime() != null && 
                              !latest.getLogOutTime().toString().equals("00:00");
             timeOutBtn.setEnabled(!alreadyTimedOut);
         }
 
-     
         double allowances = employee.getRiceSubsidy() + employee.getPhoneAllowance() + employee.getClothingAllowance();
         summaryLabel.setText("Monthly Fixed Benefits Total: PHP " + String.format("%.2f", allowances));
     }
@@ -199,13 +192,31 @@ import javax.swing.text.StyledDocument;
     private JPanel createPayrollPanel() {
         payrollSectionPanel = new JPanel(new BorderLayout(10, 10));
         payrollSectionPanel.setBorder(BorderFactory.createTitledBorder("Payroll Calculation"));
-        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        
         monthComboBox = new JComboBox<>(new String[]{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"});
+        monthComboBox.setSelectedIndex(5); 
+        
+
+        yearComboBox = new JComboBox<>(new String[]{"2024", "2025", "2026"});
+        yearComboBox.setSelectedItem("2024"); 
+
         computeBtn = new JButton("Generate Payroll");
         computeBtn.addActionListener(new ComputePayrollListener());
+        
+
+        viewPdfPayslipBtn = new JButton("View PDF Payslip");
+        viewPdfPayslipBtn.setBackground(new Color(41, 128, 185)); 
+        viewPdfPayslipBtn.setForeground(Color.WHITE);
+        viewPdfPayslipBtn.addActionListener(e -> generateJasperPayslip());
+
         controls.add(new JLabel("Select Month:"));
         controls.add(monthComboBox);
+        controls.add(new JLabel("Select Year:"));
+        controls.add(yearComboBox);
         controls.add(computeBtn);
+        controls.add(viewPdfPayslipBtn); 
+
         payrollResultArea = new JTextPane();
         payrollResultArea.setEditable(false);
         payrollResultArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -215,10 +226,25 @@ import javax.swing.text.StyledDocument;
         StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
         doc.setParagraphAttributes(0, doc.getLength(), center, false);
         
-        
         payrollSectionPanel.add(controls, BorderLayout.NORTH);
         payrollSectionPanel.add(new JScrollPane(payrollResultArea), BorderLayout.CENTER);
         return payrollSectionPanel;
+    }
+
+    private void generateJasperPayslip() {
+        int month = monthComboBox.getSelectedIndex() + 1;
+        int year = Integer.parseInt((String) yearComboBox.getSelectedItem());
+        String targetEmployeeId = employee.getEmployeeId();
+
+        try {
+            payrollProcessor.exportPayslipPDF(targetEmployeeId, month, year, loggedInUser);
+            JOptionPane.showMessageDialog(this, "Jasper PDF Payslip loaded successfully!", "Report Success", JOptionPane.INFORMATION_MESSAGE);
+        } catch (SecurityException secEx) {
+            JOptionPane.showMessageDialog(this, secEx.getMessage(), "Security Exception", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "System Error loading print engine: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
     }
 
     private JPanel createBottomPanel() {
@@ -228,13 +254,13 @@ import javax.swing.text.StyledDocument;
         leaveHistoryModel = createReadOnlyModel(leaveColumns);
         JTable leaveTable = new JTable(leaveHistoryModel);
         setupTableVisuals(leaveTable);
-        leaveHistoryScroll= new JScrollPane(leaveTable);
+        leaveHistoryScroll = new JScrollPane(leaveTable);
         leaveHistoryScroll.setPreferredSize(new Dimension(0, 150));
         leaveHistoryScroll.setBorder(BorderFactory.createTitledBorder("My Leave Requests"));
         panel.add(leaveHistoryScroll, BorderLayout.CENTER);
 
         JPanel actionBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-         applyLeaveBtn = new JButton("Apply for Leave");
+        applyLeaveBtn = new JButton("Apply for Leave");
         logoutBtn = new JButton("Logout");
         applyLeaveBtn.addActionListener(e -> new LeaveApplicationFrame(employee).setVisible(true));
         logoutBtn.addActionListener(new LogoutEmployeeListener());
@@ -245,86 +271,78 @@ import javax.swing.text.StyledDocument;
     }
     
     private void applySecurityVisibility() {
-    boolean isSelfService = loggedInUser.getEmployeeId().equals(employee.getEmployeeId());
-    
-    if (isReadOnlyMode) {
-        // pag rbac roles
-        attendancePanel.setVisible(false);
-        applyLeaveBtn.setVisible(false);
-        // hide from finance and admin
-        if (timeInBtn != null) timeInBtn.setVisible(false);
-        if (timeOutBtn != null) timeOutBtn.setVisible(false);
-    } else {
-        // for portal
-        attendancePanel.setVisible(isSelfService);
-        applyLeaveBtn.setVisible(isSelfService);
-        if (timeInBtn != null) timeInBtn.setVisible(isSelfService);
-        if (timeOutBtn != null) timeOutBtn.setVisible(isSelfService);
-    }
-
-    // hide from finance
-    if (!isSelfService) {
-        if (loggedInUser.canEditFinancials() && leaveHistoryScroll != null) {
-            leaveHistoryScroll.setVisible(false);
-        }   
-    } else {
-        // leave histroy for portal
-        if (leaveHistoryScroll != null) leaveHistoryScroll.setVisible(true);
-    }
-
-    // payroll
-    if (payrollSectionPanel != null) {
-        if ((loggedInUser.canComputePayroll() && !isSelfService) || isSelfService) {
-            payrollSectionPanel.setVisible(true);
+        boolean isSelfService = loggedInUser.getEmployeeId().equals(employee.getEmployeeId());
+        
+        if (isReadOnlyMode) {
+            attendancePanel.setVisible(false);
+            applyLeaveBtn.setVisible(false);
+            if (timeInBtn != null) timeInBtn.setVisible(false);
+            if (timeOutBtn != null) timeOutBtn.setVisible(false);
         } else {
-            payrollSectionPanel.setVisible(false);
+            attendancePanel.setVisible(isSelfService);
+            applyLeaveBtn.setVisible(isSelfService);
+            if (timeInBtn != null) timeInBtn.setVisible(isSelfService);
+            if (timeOutBtn != null) timeOutBtn.setVisible(isSelfService);
         }
-    }  
 
-    // logout and close logic
-    for (java.awt.event.ActionListener al : logoutBtn.getActionListeners()) {
-        logoutBtn.removeActionListener(al);
-    }
+        if (!isSelfService) {
+            if (loggedInUser.canEditFinancials() && leaveHistoryScroll != null) {
+                leaveHistoryScroll.setVisible(false);
+            }   
+        } else {
+            if (leaveHistoryScroll != null) leaveHistoryScroll.setVisible(true);
+        }
 
-    if (isSelfService && !isReadOnlyMode) {
-        // show logout if personal portal
-        logoutBtn.setText("Logout Account");
-        logoutBtn.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this, 
-                "Are you sure you want to logout?", "Logout", 
-                JOptionPane.YES_NO_OPTION);
-            
-            if (confirm == JOptionPane.YES_OPTION) {
-                this.dispose();
-                new LoginFrame().setVisible(true); 
+        if (payrollSectionPanel != null) {
+            if ((loggedInUser.canComputePayroll() && !isSelfService) || isSelfService) {
+                payrollSectionPanel.setVisible(true);
+            } else {
+                payrollSectionPanel.setVisible(false);
             }
-        });
-    } else {
-        // close window if rbac account 
-        logoutBtn.setText("Close Window");
-        logoutBtn.addActionListener(e -> dispose());
+        }  
+
+        for (java.awt.event.ActionListener al : logoutBtn.getActionListeners()) {
+            logoutBtn.removeActionListener(al);
+        }
+
+        if (isSelfService && !isReadOnlyMode) {
+            logoutBtn.setText("Logout Account");
+            logoutBtn.addActionListener(e -> {
+                int confirm = JOptionPane.showConfirmDialog(this, 
+                    "Are you sure you want to logout?", "Logout", 
+                    JOptionPane.YES_NO_OPTION);
+                
+                if (confirm == JOptionPane.YES_OPTION) {
+                    this.dispose();
+                    new LoginFrame().setVisible(true); 
+                }
+            });
+        } else {
+            logoutBtn.setText("Close Window");
+            logoutBtn.addActionListener(e -> dispose());
+        }
     }
-}
-    
     
     private class ComputePayrollListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             computeBtn.setEnabled(false);
             new SwingWorker<String, Void>() {
-        @Override protected String doInBackground() throws Exception {
+                @Override protected String doInBackground() throws Exception {
                     return payrollProcessor.processMonthlyPayroll(
-        employee.getEmployeeId(), 
-        monthComboBox.getSelectedIndex() + 1);
+                        employee.getEmployeeId(), 
+                        monthComboBox.getSelectedIndex() + 1);
                 }
-        @Override 
-        protected void done() {
-             try { payrollResultArea.setText(get()); 
-                 payrollResultArea.setCaretPosition(0); }
-            
-             catch (Exception ex) { payrollResultArea.setText("Error: " + ex.getMessage()); 
-             }
-                    finally { computeBtn.setEnabled(true); }
+                @Override 
+                protected void done() {
+                    try { 
+                        payrollResultArea.setText(get()); 
+                        payrollResultArea.setCaretPosition(0); 
+                    } catch (Exception ex) { 
+                        payrollResultArea.setText("Error: " + ex.getMessage()); 
+                    } finally { 
+                        computeBtn.setEnabled(true); 
+                    }
                 }
             }.execute();
         }
@@ -339,18 +357,20 @@ import javax.swing.text.StyledDocument;
             }
         }
     }
-   private DefaultTableModel createReadOnlyModel(String[] columns) {
-    return new DefaultTableModel(columns, 0) {
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false; 
-          }
-      };
-  }
+
+    private DefaultTableModel createReadOnlyModel(String[] columns) {
+        return new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; 
+            }
+        };
+    }
+
     private void setupTableVisuals(JTable table) {
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getTableHeader().setReorderingAllowed(false);
         table.setRowHeight(22);
         table.setFillsViewportHeight(true);
-   } 
- }
+    } 
+}

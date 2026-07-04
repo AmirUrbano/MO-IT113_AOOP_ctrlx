@@ -10,16 +10,22 @@ package model;
  */
 public class HREmployee  extends Employee {
 
-    public HREmployee(String employeeId, String lastName, String firstName, String birthday, String address, String phoneNumber, String sssNumber, String philHealth, String tinNumber, String pagIbig, String status, String position, String supervisor, double basicSalary, double riceSubsidy, double phoneAllowance, double clothingAllowance, double grossSemiMonthlyRate, double hourlyRate) {
-        super(employeeId, lastName, firstName, birthday, address, phoneNumber, sssNumber, philHealth, tinNumber, pagIbig, status, position, supervisor, basicSalary, riceSubsidy, phoneAllowance, clothingAllowance, grossSemiMonthlyRate, hourlyRate);
+    public HREmployee(String employeeId, String lastName, String firstName, String birthday, String address, String phoneNumber, String sssNumber, String philHealth, String tinNumber, String pagIbig, String status, String position, String supervisor, String department, double basicSalary, double riceSubsidy, double phoneAllowance, double clothingAllowance, double grossSemiMonthlyRate, double hourlyRate) {
+        super(employeeId, lastName, firstName, birthday, address, phoneNumber, sssNumber, philHealth, tinNumber, pagIbig, status, position, supervisor, department, basicSalary, riceSubsidy, phoneAllowance, clothingAllowance, grossSemiMonthlyRate, hourlyRate);
     }
+    
     @Override public boolean canViewDatabase() { return true; }
     @Override public boolean canViewAllRecords() { return true; }
     @Override public boolean canAddEmployee() { return true; }
     @Override public boolean canDeleteEmployee() { return true; }
     @Override public boolean canEditBasicInfo() { return true; } 
     @Override public boolean canApproveLeave() { return true; }  
-    
+    @Override public boolean isProtectedRole() {return true;}
+    @Override public boolean canEditFinancials() {return false;}
+    @Override public boolean canComputePayroll() {return false;}
+    @Override public boolean canFileLeave() {return false;}
+    @Override public boolean canAccessSystemTools() {return false;}
+
       @Override
        public double calculateSSS() {
         double salary = getBasicSalary();

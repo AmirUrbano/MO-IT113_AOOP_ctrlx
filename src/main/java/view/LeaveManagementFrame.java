@@ -99,28 +99,23 @@ public class LeaveManagementFrame extends JFrame {
     }
 
    private void updateLeaveStatus(String newStatus) {
-    int selectedRow = leaveTable.getSelectedRow();
-    if (selectedRow == -1) {
-        JOptionPane.showMessageDialog(this, "Please select a request first.");
-        return;
-    }
-
-    String requestId = (String) tableModel.getValueAt(selectedRow, 0);
-    
-
-    for (LeaveRequest lr : LeaveService.getInstance().getAllLeaveRequests()) {
-        if (lr.getRequestId().equals(requestId)) {
-            lr.setStatus(newStatus);
-            break;
+        int selectedRow = leaveTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select a request first.");
+            return;
         }
-    }
 
-  
-    LeaveService.getInstance().updateLeaveStatus(requestId, newStatus);
-    
-    loadTableData();
-    JOptionPane.showMessageDialog(this, "Request " + newStatus);
-}
+        String requestId = (String) tableModel.getValueAt(selectedRow, 0);
+
+        boolean success = LeaveService.getInstance().updateLeaveStatus(requestId, newStatus);
+        
+        if (success) {
+            loadTableData(); // I-refresh ang JTable mula sa database
+            JOptionPane.showMessageDialog(this, "Request successfully " + newStatus + "!");
+        } else {
+            JOptionPane.showMessageDialog(this, "Failed to update request status in Database.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+   }
    
    
   private DefaultTableModel createReadOnlyModel(String[] columns) {

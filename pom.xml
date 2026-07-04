@@ -5,6 +5,13 @@
     <artifactId>MotorPHPayRoll_AOOP</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
+    <name>MotorPHPayRoll_AOOP</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>24</maven.compiler.release>
+        <exec.mainClass>com.mycompany.motorphpayrollcp2.MotorPHPayRollCp2</exec.mainClass>
+    </properties>
 
     <build>
         <plugins>
@@ -19,15 +26,18 @@
                 </configuration>
             </plugin>
         </plugins>
+
+        <resources>
+            <resource>
+                <directory>src/main/java</directory>
+                <includes>
+                    <include>**/*.jrxml</include>
+                    <include>**/*.png</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>24</maven.compiler.release>
-        <exec.mainClass>com.mycompany.motorphpayrollcp2.MotorPHPayRollCp2</exec.mainClass>
-    </properties>
-
-    <!-- Dependencies Section -->
     <dependencies>
         <dependency>
             <groupId>com.opencsv</groupId>
@@ -35,20 +45,28 @@
             <version>5.11.1</version>
         </dependency>
     
-    
-    <dependency>
+        <dependency>
             <groupId>com.toedter</groupId>
             <artifactId>jcalendar</artifactId>
             <version>1.4</version>
         </dependency>
     
-    
-    <dependency>
+        <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>8.0.33</version>
         </dependency>
-    </dependencies>
-    <name>MotorPHPayRoll_AOOP</name>
-</project>
 
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports</artifactId>
+            <version>6.20.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>1.3.30</version>
+        </dependency>
+    </dependencies>
+</project>
