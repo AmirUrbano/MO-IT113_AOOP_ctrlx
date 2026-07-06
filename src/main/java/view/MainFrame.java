@@ -74,11 +74,11 @@ public class MainFrame extends JFrame {
         setLayout(new BorderLayout());
         getContentPane().setBackground(new Color(245, 245, 245));
 
-        // STEP 1: I-initialize muna ang Bottom ActionBar (Dito magkakaroon ng laman ang New/Update/Delete buttons)
+
         JPanel bottomBar = createBottomActionBar();
         add(bottomBar, BorderLayout.SOUTH);
   
-        // STEP 2: Header Panel Setup
+
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBackground(Color.WHITE);
         headerPanel.setPreferredSize(new Dimension(1400, 65));
@@ -95,7 +95,7 @@ public class MainFrame extends JFrame {
         headerPanel.add(lblUser, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // STEP 3: Sidebar Construction
+
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(new Color(44, 62, 80));
@@ -238,7 +238,7 @@ public class MainFrame extends JFrame {
         splitPane.setDividerLocation(850);
         splitPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        splitPane.setLeftComponent(createTablePanel()); // tableModel is initialized here!
+        splitPane.setLeftComponent(createTablePanel()); 
         
         detailPanel = new EmployeeFormPanel();
         detailPanel.setFieldsEditable(false, false);

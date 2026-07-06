@@ -24,13 +24,23 @@ public class EmployeeDAO {
 
     public List<Employee> load() {
         List<Employee> employeeList = new ArrayList<>();
-        String sql = "SELECT * FROM employees";
+        String sql = "SELECT " +
+                     "  e.employee_id, e.last_name, e.first_name, e.birthday, e.address, e.phone_number, " +
+                     "  e.sss_number, e.philhealth_number, e.tin_number, e.pagibig_number, e.status, " +
+                     "  e.position, e.supervisor, " +
+                     "  jd.department_name AS department, " +  // Heto yung automatic mapping string mo!
+                     "  e.basic_salary, e.rice_subsidy, e.phone_allowance, e.clothing_allowance, " +
+                     "  e.gross_semi_monthly_rate, e.hourly_rate " + 
+                     "FROM employees e " +
+                     "INNER JOIN job_departments jd ON e.position = jd.position_name" +
+                     " ORDER BY e.employee_id ASC";
+                     
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) { 
 
             while (rs.next()) {
-      
+       
                 String[] data = new String[20];
                 data[0] = rs.getString("employee_id");
                 data[1] = rs.getString("last_name");
@@ -46,7 +56,6 @@ public class EmployeeDAO {
                 data[11] = rs.getString("position");
                 data[12] = rs.getString("supervisor");
                 
-                // bypass para sa employeestatus.java 
                 data[13] = String.valueOf(rs.getDouble("basic_salary"));
                 data[14] = String.valueOf(rs.getDouble("rice_subsidy"));
                 data[15] = String.valueOf(rs.getDouble("phone_allowance"));
@@ -54,13 +63,16 @@ public class EmployeeDAO {
                 data[17] = String.valueOf(rs.getDouble("gross_semi_monthly_rate"));
                 data[18] = String.valueOf(rs.getDouble("hourly_rate"));
 
-                Employee emp = EmployeeStatus.createFromDb(data); 
+                data[19] = rs.getString("department"); 
+
+                Employee emp = EmployeeStatus.createFromDb(data); // Hello sir eto po yung sa EmployeeStatus sa model na nag mamap kung ano child class po 
                 if (emp != null) {
-                    emp.setDepartment(rs.getString("department"));
+           
+                    emp.setDepartment(data[19]); 
                     employeeList.add(emp);
                 }
             }
-            logger.info("Successfully loaded " + employeeList.size() + " employees from MySQL Database.");
+            logger.info("Successfully loaded " + employeeList.size() + " employees from MySQL Database via 3NF JOIN.");
 
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error while loading employees: " + e.getMessage());
@@ -76,12 +88,12 @@ public class EmployeeDAO {
         }
 
         String sql = "INSERT INTO employees (employee_id, last_name, first_name, birthday, address, phone_number, "
-                   + "sss_number, philhealth_number, tin_number, pagibig_number, status, position, supervisor, department, "
+                   + "sss_number, philhealth_number, tin_number, pagibig_number, status, position, supervisor, "
                    + "basic_salary, rice_subsidy, phone_allowance, clothing_allowance, gross_semi_monthly_rate, hourly_rate) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                    + "ON DUPLICATE KEY UPDATE "
                    + "last_name=?, first_name=?, birthday=?, address=?, phone_number=?, sss_number=?, "
-                   + "philhealth_number=?, tin_number=?, pagibig_number=?, status=?, position=?, supervisor=?, department=?, "
+                   + "philhealth_number=?, tin_number=?, pagibig_number=?, status=?, position=?, supervisor=?, "
                    + "basic_salary=?, rice_subsidy=?, phone_allowance=?, clothing_allowance=?, gross_semi_monthly_rate=?, hourly_rate=?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -103,41 +115,40 @@ public class EmployeeDAO {
                 pstmt.setString(11, emp.getStatus());
                 pstmt.setString(12, emp.getPosition());
                 pstmt.setString(13, emp.getSupervisor());
-                pstmt.setString(14, emp.getDepartment()); 
-                pstmt.setDouble(15, emp.getBasicSalary());
-                pstmt.setDouble(16, emp.getRiceSubsidy());
-                pstmt.setDouble(17, emp.getPhoneAllowance());
-                pstmt.setDouble(18, emp.getClothingAllowance());
-                pstmt.setDouble(19, emp.getGrossSemiMonthlyRate());
-                pstmt.setDouble(20, emp.getHourlyRate());
+ 
+                pstmt.setDouble(14, emp.getBasicSalary());
+                pstmt.setDouble(15, emp.getRiceSubsidy());
+                pstmt.setDouble(16, emp.getPhoneAllowance());
+                pstmt.setDouble(17, emp.getClothingAllowance());
+                pstmt.setDouble(18, emp.getGrossSemiMonthlyRate());
+                pstmt.setDouble(19, emp.getHourlyRate());
 
-                // update part
-                pstmt.setString(21, emp.getLastName());
-                pstmt.setString(22, emp.getFirstName());
-                pstmt.setString(23, emp.getBirthday());
-                pstmt.setString(24, emp.getAddress());
-                pstmt.setString(25, emp.getPhoneNumber());
-                pstmt.setString(26, emp.getSssNumber());
-                pstmt.setString(27, emp.getPhilHealth());
-                pstmt.setString(28, emp.getTinNumber());
-                pstmt.setString(29, emp.getPagIbig());
-                pstmt.setString(30, emp.getStatus());
-                pstmt.setString(31, emp.getPosition());
-                pstmt.setString(32, emp.getSupervisor());
-                pstmt.setString(33, emp.getDepartment()); 
-                pstmt.setDouble(34, emp.getBasicSalary());
-                pstmt.setDouble(35, emp.getRiceSubsidy());
-                pstmt.setDouble(36, emp.getPhoneAllowance());
-                pstmt.setDouble(37, emp.getClothingAllowance());
-                pstmt.setDouble(38, emp.getGrossSemiMonthlyRate());
-                pstmt.setDouble(39, emp.getHourlyRate());
+
+                pstmt.setString(20, emp.getLastName());
+                pstmt.setString(21, emp.getFirstName());
+                pstmt.setString(22, emp.getBirthday());
+                pstmt.setString(23, emp.getAddress());
+                pstmt.setString(24, emp.getPhoneNumber());
+                pstmt.setString(25, emp.getSssNumber());
+                pstmt.setString(26, emp.getPhilHealth());
+                pstmt.setString(27, emp.getTinNumber());
+                pstmt.setString(28, emp.getPagIbig());
+                pstmt.setString(29, emp.getStatus());
+                pstmt.setString(30, emp.getPosition());
+                pstmt.setString(31, emp.getSupervisor());
+                pstmt.setDouble(32, emp.getBasicSalary());
+                pstmt.setDouble(33, emp.getRiceSubsidy());
+                pstmt.setDouble(34, emp.getPhoneAllowance());
+                pstmt.setDouble(35, emp.getClothingAllowance());
+                pstmt.setDouble(36, emp.getGrossSemiMonthlyRate());
+                pstmt.setDouble(37, emp.getHourlyRate());
 
                 pstmt.addBatch();
             }
 
             pstmt.executeBatch();
             conn.commit(); 
-            logger.info("Successfully synced employee list to MySQL Database.");
+            logger.info("Successfully synced employee list to MySQL Database (3NF Compliant).");
 
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error while saving employees: " + e.getMessage());

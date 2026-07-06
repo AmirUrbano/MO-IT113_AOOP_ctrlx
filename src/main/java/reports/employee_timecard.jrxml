@@ -19,7 +19,7 @@ SELECT
     e.employee_id, 
     CONCAT(e.first_name, ' ', e.last_name) AS full_name, 
     e.position, 
-    e.department,
+    jd.department_name AS department, 
     d.date_val AS log_date,
     DATE_FORMAT(d.date_val, '%a') AS day_name,
     a.time_in,
@@ -40,6 +40,7 @@ SELECT
     END AS remarks
 FROM DaysOfMonth d
 CROSS JOIN employees e ON e.employee_id = $P{EmpIDParameter}
+INNER JOIN job_departments jd ON e.position = jd.position_name
 LEFT JOIN attendance_logs a ON d.date_val = a.log_date AND a.employee_id = e.employee_id
 LEFT JOIN holidays h ON d.date_val = h.holiday_date
 ORDER BY d.date_val ASC;]]>
@@ -59,9 +60,9 @@ ORDER BY d.date_val ASC;]]>
 		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
 	</field>
 	<field name="department" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="department"/>
+		<property name="com.jaspersoft.studio.field.name" value="department_name"/>
 		<property name="com.jaspersoft.studio.field.label" value="department"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="job_departments"/>
 	</field>
 	<field name="log_date" class="java.sql.Date">
 		<property name="com.jaspersoft.studio.field.name" value="date_val"/>

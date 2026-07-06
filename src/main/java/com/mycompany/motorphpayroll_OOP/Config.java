@@ -9,7 +9,6 @@ import java.time.LocalTime;
  * @author Amir
  */
 public class Config {
-    public static final String FILE_PATH = "Attendance.csv";
     public static final LocalTime EXPECTED_LOGIN = LocalTime.of(9, 0);
     public static final double OVERTIME_MULTIPLIER = 1.25;
     public static final int STANDARD_WORK_HOURS = 40;

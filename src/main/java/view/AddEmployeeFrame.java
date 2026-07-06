@@ -7,6 +7,8 @@ package view;
 import service.EmployeeService;
 import javax.swing.*;
 import java.awt.*;
+import model.Employee;
+import model.EmployeeStatus;
 
 /**
  *
@@ -33,19 +35,23 @@ public class AddEmployeeFrame extends JFrame {
         setLayout(new BorderLayout());
         setLocationRelativeTo(parentFrame);
 
-    
+        // Form fields layout mapping
         formPanel = new EmployeeFormPanel();
         add(formPanel, BorderLayout.CENTER);
 
-    
+        // Control buttons panel layout
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 15));
         buttonPanel.setBackground(new Color(245, 245, 245));
         
-        saveBtn = new JButton("Save");
-        cancelBtn = new JButton("Cancel");
+        saveBtn = new JButton("Save Record");
+        saveBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        saveBtn.setBackground(new Color(40, 167, 69));
+        saveBtn.setForeground(Color.WHITE);
         
-      
-        saveBtn.setPreferredSize(new Dimension(100, 35));
+        cancelBtn = new JButton("Cancel");
+        cancelBtn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        saveBtn.setPreferredSize(new Dimension(120, 35));
         cancelBtn.setPreferredSize(new Dimension(100, 35));
 
         saveBtn.addActionListener(e -> onSave());
@@ -57,30 +63,22 @@ public class AddEmployeeFrame extends JFrame {
     }
 
     private void onSave() {
-        try {
-            String[] data = formPanel.validateAndGetFormData();
-            
-            if (employeeDetails.findEmployeeById(data[0]) != null) {
-                JOptionPane.showMessageDialog(this, 
-                    "Employee Number " + data[0] + " already exists!", 
-                    "Duplicate ID", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            boolean success = employeeDetails.createAndAddEmployee(data);
-            
-            if (success) {
-                parentFrame.refreshTable();
-                JOptionPane.showMessageDialog(this, "Employee successfully registered!");
-                dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, "Failed to save to database.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-
-        } catch (IllegalArgumentException ex) {
+     try {
          
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Input Error", JOptionPane.WARNING_MESSAGE);
+         String[] data = formPanel.validateAndGetFormData();
+        
+            if (employeeDetails.registerEmployee(data)) {
+                parentFrame.refreshTable(); 
+                JOptionPane.showMessageDialog(this, "Employee successfully registered!", 
+                 "System Success", JOptionPane.INFORMATION_MESSAGE);
+                dispose();
+         }
+        } catch (IllegalArgumentException ex) {
+
+         JOptionPane.showMessageDialog(this, ex.getMessage(), "Input Error", JOptionPane.WARNING_MESSAGE);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "An unexpected error occurred: " + ex.getMessage());
+
+        JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

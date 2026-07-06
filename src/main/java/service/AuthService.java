@@ -41,27 +41,11 @@ public class AuthService {
         return instance;
     }
 
-     public LoginResult authenticate(String username, String password) {
-        
+    public LoginResult authenticate(String username, String password) {
         String targetId = userDAO.validateLogin(username, password);
         
         if (targetId == null) {
             return null;
-        }
-
-        boolean isRoleLogin = username.equalsIgnoreCase("Admin") || 
-                             username.equalsIgnoreCase("HR") || 
-                             username.equalsIgnoreCase("Finance");
-                             
-        boolean isItRoleLogin = username.equalsIgnoreCase("it");
-
-        ViewType destination;
-        if (isItRoleLogin) {
-            destination = ViewType.IT_DASHBOARD;
-        } else if (isRoleLogin) {
-            destination = ViewType.MAIN_MGMT;
-        } else {
-            destination = ViewType.SELF_SERVICE;
         }
 
         Employee emp = EmployeeService.getInstance().findEmployeeById(targetId);
@@ -69,7 +53,19 @@ public class AuthService {
             return null;
         }
 
+        ViewType destination;
+        
+        if (username.equals(targetId)) {
+            destination = ViewType.SELF_SERVICE;
+        } 
+        else if (emp.canAccessSystemTools()) {
+            destination = ViewType.IT_DASHBOARD;
+        } else if (emp.canViewDatabase()) {
+            destination = ViewType.MAIN_MGMT;
+        } else {
+            destination = ViewType.SELF_SERVICE;
+        }
+
         return new LoginResult(emp, destination);
     }
 }
-

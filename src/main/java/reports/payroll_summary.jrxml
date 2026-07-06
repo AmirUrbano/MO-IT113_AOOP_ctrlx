@@ -12,34 +12,80 @@
     e.employee_id,
     CONCAT(e.last_name, ', ', e.first_name) AS full_name,
     e.position,
-    e.department,
+    jd.department_name AS department, 
     e.basic_salary AS gross_income,
     e.sss_number,
-    -- SSS Bracket Matrix
-    CASE 
-        WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 
-    END AS sss_contribution,
+
+    sss.sss_contribution,
     e.philhealth_number,
-    -- PhilHealth Employee Share
-    CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE ROUND((e.basic_salary * 0.03) / 2, 2) END AS philhealth_contribution,
+    ph.philhealth_contribution,
     e.pagibig_number,
-    -- Pag-IBIG Capped at 100
-    CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END AS pagibig_contribution,
+    pi.pagibig_contribution,
     e.tin_number,
-    -- Withholding Tax Rounded
-    ROUND(e.basic_salary * 0.12, 2) AS withholding_tax,
-    -- Net Pay with Allowances Included
+
+    -- FIX: replaced flat 12% with the actual progressive BIR bracket formula,
+    -- matching Employee.calculateWithholdingTax() in Java
+    ROUND(
+        CASE 
+            WHEN sss.taxable_income <= 20833 THEN 0
+            WHEN sss.taxable_income <= 33332 THEN (sss.taxable_income - 20833) * 0.2
+            WHEN sss.taxable_income <= 66666 THEN 2500 + (sss.taxable_income - 33333) * 0.25
+            WHEN sss.taxable_income <= 166666 THEN 10833 + (sss.taxable_income - 66667) * 0.3
+            WHEN sss.taxable_income <= 666666 THEN 40833.33 + (sss.taxable_income - 166667) * 0.32
+            ELSE 200833.33 + (sss.taxable_income - 666667) * 0.35
+        END, 2
+    ) AS withholding_tax,
+
     ROUND(
         e.basic_salary 
-        - (CASE WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END)
-        - (CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE (e.basic_salary * 0.03) / 2 END)
-        - (CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) END)
-        - (e.basic_salary * 0.12)
+        - sss.sss_contribution
+        - ph.philhealth_contribution
+        - pi.pagibig_contribution
+        - (CASE 
+            WHEN sss.taxable_income <= 20833 THEN 0
+            WHEN sss.taxable_income <= 33332 THEN (sss.taxable_income - 20833) * 0.2
+            WHEN sss.taxable_income <= 66666 THEN 2500 + (sss.taxable_income - 33333) * 0.25
+            WHEN sss.taxable_income <= 166666 THEN 10833 + (sss.taxable_income - 66667) * 0.3
+            WHEN sss.taxable_income <= 666666 THEN 40833.33 + (sss.taxable_income - 166667) * 0.32
+            ELSE 200833.33 + (sss.taxable_income - 666667) * 0.35
+          END)
         + COALESCE(e.rice_subsidy, 0) + COALESCE(e.phone_allowance, 0) + COALESCE(e.clothing_allowance, 0),
         2
     ) AS net_pay
+
 FROM employees e
-WHERE e.department = $P{DeptParameter}
+INNER JOIN job_departments jd ON e.position = jd.position_name 
+-- Precompute SSS/PhilHealth/Pag-IBIG once (rounded consistently) and derive taxable_income
+-- from those SAME rounded values, so the displayed columns and net_pay always agree.
+JOIN (
+    SELECT 
+        e2.employee_id,
+        (CASE 
+            WHEN e2.basic_salary <= 3250 THEN 135.00 WHEN e2.basic_salary <= 3750 THEN 157.50 WHEN e2.basic_salary <= 4250 THEN 180.00 WHEN e2.basic_salary <= 4750 THEN 202.50 WHEN e2.basic_salary <= 5250 THEN 225.00 WHEN e2.basic_salary <= 5750 THEN 247.50 WHEN e2.basic_salary <= 6250 THEN 270.00 WHEN e2.basic_salary <= 6750 THEN 292.50 WHEN e2.basic_salary <= 7250 THEN 315.00 WHEN e2.basic_salary <= 7750 THEN 337.50 WHEN e2.basic_salary <= 8250 THEN 360.00 WHEN e2.basic_salary <= 8750 THEN 382.50 WHEN e2.basic_salary <= 9250 THEN 405.00 WHEN e2.basic_salary <= 9750 THEN 427.50 WHEN e2.basic_salary <= 10250 THEN 450.00 WHEN e2.basic_salary <= 10750 THEN 472.50 WHEN e2.basic_salary <= 11250 THEN 495.00 WHEN e2.basic_salary <= 11750 THEN 517.50 WHEN e2.basic_salary <= 12250 THEN 540.00 WHEN e2.basic_salary <= 12750 THEN 562.50 WHEN e2.basic_salary <= 13250 THEN 585.00 WHEN e2.basic_salary <= 13750 THEN 607.50 WHEN e2.basic_salary <= 14250 THEN 630.00 WHEN e2.basic_salary <= 14750 THEN 652.50 WHEN e2.basic_salary <= 15250 THEN 675.00 WHEN e2.basic_salary <= 15750 THEN 697.50 WHEN e2.basic_salary <= 16250 THEN 720.00 WHEN e2.basic_salary <= 16750 THEN 742.50 WHEN e2.basic_salary <= 17250 THEN 765.00 WHEN e2.basic_salary <= 17750 THEN 787.50 WHEN e2.basic_salary <= 18250 THEN 810.00 WHEN e2.basic_salary <= 18750 THEN 832.50 WHEN e2.basic_salary <= 19250 THEN 855.00 WHEN e2.basic_salary <= 19750 THEN 877.50 WHEN e2.basic_salary <= 20250 THEN 900.00 WHEN e2.basic_salary <= 20750 THEN 922.50 WHEN e2.basic_salary <= 21250 THEN 945.00 WHEN e2.basic_salary <= 21750 THEN 967.50 WHEN e2.basic_salary <= 22250 THEN 990.00 WHEN e2.basic_salary <= 22750 THEN 1012.50 WHEN e2.basic_salary <= 23250 THEN 1035.00 WHEN e2.basic_salary <= 23750 THEN 1057.50 WHEN e2.basic_salary <= 24250 THEN 1080.00 WHEN e2.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00
+        END) AS sss_contribution,
+        ROUND(
+            e2.basic_salary
+            - (CASE WHEN e2.basic_salary <= 3250 THEN 135.00 WHEN e2.basic_salary <= 3750 THEN 157.50 WHEN e2.basic_salary <= 4250 THEN 180.00 WHEN e2.basic_salary <= 4750 THEN 202.50 WHEN e2.basic_salary <= 5250 THEN 225.00 WHEN e2.basic_salary <= 5750 THEN 247.50 WHEN e2.basic_salary <= 6250 THEN 270.00 WHEN e2.basic_salary <= 6750 THEN 292.50 WHEN e2.basic_salary <= 7250 THEN 315.00 WHEN e2.basic_salary <= 7750 THEN 337.50 WHEN e2.basic_salary <= 8250 THEN 360.00 WHEN e2.basic_salary <= 8750 THEN 382.50 WHEN e2.basic_salary <= 9250 THEN 405.00 WHEN e2.basic_salary <= 9750 THEN 427.50 WHEN e2.basic_salary <= 10250 THEN 450.00 WHEN e2.basic_salary <= 10750 THEN 472.50 WHEN e2.basic_salary <= 11250 THEN 495.00 WHEN e2.basic_salary <= 11750 THEN 517.50 WHEN e2.basic_salary <= 12250 THEN 540.00 WHEN e2.basic_salary <= 12750 THEN 562.50 WHEN e2.basic_salary <= 13250 THEN 585.00 WHEN e2.basic_salary <= 13750 THEN 607.50 WHEN e2.basic_salary <= 14250 THEN 630.00 WHEN e2.basic_salary <= 14750 THEN 652.50 WHEN e2.basic_salary <= 15250 THEN 675.00 WHEN e2.basic_salary <= 15750 THEN 697.50 WHEN e2.basic_salary <= 16250 THEN 720.00 WHEN e2.basic_salary <= 16750 THEN 742.50 WHEN e2.basic_salary <= 17250 THEN 765.00 WHEN e2.basic_salary <= 17750 THEN 787.50 WHEN e2.basic_salary <= 18250 THEN 810.00 WHEN e2.basic_salary <= 18750 THEN 832.50 WHEN e2.basic_salary <= 19250 THEN 855.00 WHEN e2.basic_salary <= 19750 THEN 877.50 WHEN e2.basic_salary <= 20250 THEN 900.00 WHEN e2.basic_salary <= 20750 THEN 922.50 WHEN e2.basic_salary <= 21250 THEN 945.00 WHEN e2.basic_salary <= 21750 THEN 967.50 WHEN e2.basic_salary <= 22250 THEN 990.00 WHEN e2.basic_salary <= 22750 THEN 1012.50 WHEN e2.basic_salary <= 23250 THEN 1035.00 WHEN e2.basic_salary <= 23750 THEN 1057.50 WHEN e2.basic_salary <= 24250 THEN 1080.00 WHEN e2.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END)
+            - (CASE WHEN (e2.basic_salary * 0.03) > 1800 THEN 900.00 ELSE ROUND((e2.basic_salary * 0.03) / 2, 2) END)
+            - (CASE WHEN (e2.basic_salary * CASE WHEN e2.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e2.basic_salary * CASE WHEN e2.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END),
+            2
+        ) AS taxable_income
+    FROM employees e2
+) sss ON sss.employee_id = e.employee_id
+JOIN (
+    SELECT 
+        e3.employee_id,
+        CASE WHEN (e3.basic_salary * 0.03) > 1800 THEN 900.00 ELSE ROUND((e3.basic_salary * 0.03) / 2, 2) END AS philhealth_contribution
+    FROM employees e3
+) ph ON ph.employee_id = e.employee_id
+JOIN (
+    SELECT 
+        e4.employee_id,
+        CASE WHEN (e4.basic_salary * CASE WHEN e4.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e4.basic_salary * CASE WHEN e4.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END AS pagibig_contribution
+    FROM employees e4
+) pi ON pi.employee_id = e.employee_id
+
+WHERE jd.department_name = $P{DeptParameter} 
 ORDER BY e.employee_id ASC;]]>
 	</queryString>
 	<field name="employee_id" class="java.lang.String">
@@ -57,9 +103,9 @@ ORDER BY e.employee_id ASC;]]>
 		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
 	</field>
 	<field name="department" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="department"/>
+		<property name="com.jaspersoft.studio.field.name" value="department_name"/>
 		<property name="com.jaspersoft.studio.field.label" value="department"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="job_departments"/>
 	</field>
 	<field name="gross_income" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="basic_salary"/>

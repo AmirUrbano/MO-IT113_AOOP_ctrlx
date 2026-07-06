@@ -14,27 +14,13 @@ package model;
 
     public static Employee createFromDb(String[] data) {
     
-       // 10: Status
-        // 11: Position 
         String status = data[10];
         String position = data[11].toLowerCase(); 
 
-        // department mapping
-        String department = "General";
-        if (position.contains("chief") || position.contains("ceo") || position.contains("coo")) {
-            department = "Leadership";
-        } else if (position.contains("hr") || position.contains("human")) {
-            department = "HR";
-        } else if (position.contains("account") || position.contains("payroll") || position.contains("finance")) {
-            department = "Accounting";
-        } else if (position.contains("it") || position.contains("systems") || position.contains("supply chain") || position.contains("logistics")) {
-            department = "IT";
-        } else if (position.contains("customer") || position.contains("sales") || position.contains("marketing")) {
-            department = "Marketing";
-        }
+   
+        String department = data[19]; 
 
         try {
-           
             double basic  = parseSafeDouble(data[13]);
             double rice   = parseSafeDouble(data[14]);
             double phone  = parseSafeDouble(data[15]);
@@ -43,17 +29,18 @@ package model;
             double hourly = parseSafeDouble(data[18]);
 
             // Check for HR Roles
-            if (position.equalsIgnoreCase("HR Manager")) {
+            if (position.equalsIgnoreCase("HR Manager") || position.contains("hr team leader") || position.contains("hr rank and file")) {
                 return new HREmployee(
                     data[0], data[1], data[2], data[3], data[4], data[5], 
                     data[6], data[7], data[8], data[9], data[10], data[11], 
-                    data[12], department, basic, rice, phone, cloth, semi, hourly
+                    data[12], department, basic, rice, phone, cloth, semi, hourly 
                 );
             } 
             // Check for Finance/Accounting/Payroll Roles
             else if (position.equalsIgnoreCase("Payroll Manager") || 
                      position.equalsIgnoreCase("Chief Finance Officer") || 
-                     position.equalsIgnoreCase("Accounting Head")) {
+                     position.equalsIgnoreCase("Accounting Head") ||
+                     position.contains("payroll") || position.contains("account")) {
           
                 return new FinanceEmployee(
                     data[0], data[1], data[2], data[3], data[4], data[5], 
@@ -69,10 +56,11 @@ package model;
                 return new AdminEmployee(
                     data[0], data[1], data[2], data[3], data[4], data[5], 
                     data[6], data[7], data[8], data[9], data[10], data[11], 
-                    data[12], department, basic, rice, phone, cloth, semi, hourly
+                    data[12], department, basic, rice, phone, cloth, semi, hourly 
                 );
             }
-            else if (position.equalsIgnoreCase("IT Operations and Systems")) {
+            // Check for IT / Logistics Roles
+            else if (position.equalsIgnoreCase("IT Operations and Systems") || position.contains("supply chain") || position.contains("logistics")) {
                 return new ITEmployee(
                     data[0], data[1], data[2], data[3], data[4], data[5], 
                     data[6], data[7], data[8], data[9], data[10], data[11], 
@@ -90,7 +78,7 @@ package model;
                 return new ProbationaryEmp(
                     data[0], data[1], data[2], data[3], data[4], data[5], 
                     data[6], data[7], data[8], data[9], data[10], data[11], 
-                    data[12], department, basic, rice, phone, cloth, semi, hourly
+                    data[12], department, basic, rice, phone, cloth, semi, hourly 
                 );
             }
         } catch (Exception e) {

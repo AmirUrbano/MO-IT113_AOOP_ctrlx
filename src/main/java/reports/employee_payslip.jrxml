@@ -10,83 +10,151 @@
 	<parameter name="YearParameter" class="java.lang.Integer"/>
 	<parameter name="LogoParameter" class="java.io.InputStream"/>
 	<queryString>
-		<![CDATA[SELECT
-    e.employee_id AS employee_num,
-    CONCAT(e.last_name, ', ', e.first_name) AS employee_name,
-    e.position,
-    e.department,
-    e.basic_salary AS monthly_salary,
-    e.hourly_rate,
-    
-    STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d') AS start_date,
-    LAST_DAY(STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d')) AS end_date,
-    
-    COALESCE(att.total_days, 0) AS days_worked,
-    COALESCE(att.total_ot_hours, 0) AS overtime_hours,
-    ROUND(COALESCE(att.total_ot_hours, 0) * e.hourly_rate * 1.25, 2) AS overtime_pay,
-    
-    COALESCE(att.total_late_minutes, 0) AS late_minutes,
-    ROUND(COALESCE(att.total_late_minutes, 0) * (e.hourly_rate / 60), 2) AS late_deduction,
-    
-    ROUND(e.basic_salary + (COALESCE(att.total_ot_hours, 0) * e.hourly_rate * 1.25), 2) AS gross_income,
+		<![CDATA[WITH RECURSIVE calendar_days AS (
 
-    COALESCE(e.rice_subsidy, 0) AS rice_subsidy,
-    COALESCE(e.phone_allowance, 0) AS phone_allowance,
-    COALESCE(e.clothing_allowance, 0) AS clothing_allowance,
-    ROUND(COALESCE(e.rice_subsidy, 0) + COALESCE(e.phone_allowance, 0) + COALESCE(e.clothing_allowance, 0), 2) AS total_benefits,
+    SELECT STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d') AS log_date
+    UNION ALL
+    SELECT log_date + INTERVAL 1 DAY 
+    FROM calendar_days 
+    WHERE log_date < LAST_DAY(STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d'))
+),
+weekly_raw_logs AS (
 
-    -- SSS, PhilHealth, Pag-IBIG Matrix
-    CASE
-        WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00
-    END AS social_security_system,
+    SELECT 
+        e.employee_id,
+        FLOOR((DAY(c.log_date) + WEEKDAY(STR_TO_DATE(CONCAT($P{YearParameter}, '-', $P{MonthParameter}, '-01'), '%Y-%m-%d')) ) / 7) + 1 AS java_week_num,
+        c.log_date,
+        IFNULL(TIME_TO_SEC(TIMEDIFF(al.time_out, al.time_in)) / 60, 0) AS daily_minutes,
 
-    CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE ROUND((e.basic_salary * 0.03) / 2, 2) END AS philhealth,
-    CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END AS pag_ibig,
+        CASE WHEN al.time_in > '09:00:00' THEN TIME_TO_SEC(TIMEDIFF(al.time_in, '09:00:00')) / 60 ELSE 0 END AS daily_late_mins,
 
-    ROUND(e.basic_salary * 0.12, 2) AS withholding_tax,
+        CASE WHEN al.time_in IS NOT NULL THEN 1 ELSE 0 END AS worked_flag
+    FROM calendar_days c
+    CROSS JOIN employees e
+    LEFT JOIN attendance_logs al ON c.log_date = al.log_date AND e.employee_id = al.employee_id
+    WHERE e.employee_id = CAST($P{EmpIDParameter} AS CHAR)
+),
+weekly_aggregated AS (
 
-    -- TOTAL DEDUCTIONS
+    SELECT 
+        employee_id,
+        java_week_num,
+        SUM(daily_late_mins) AS week_late_minutes,
+
+        SUM(CASE WHEN daily_late_mins > 0 THEN 1 ELSE 0 END) AS week_late_days,
+        SUM(worked_flag) AS week_days_worked,
+        SUM(
+            CASE 
+                WHEN daily_minutes > 300 THEN (daily_minutes - 60) / 60 
+                ELSE daily_minutes / 60 
+            END
+        ) AS total_week_hours
+    FROM weekly_raw_logs
+    GROUP BY employee_id, java_week_num
+),
+monthly_payroll_pivot AS (
+
+    SELECT 
+        wa.employee_id,
+        SUM(wa.week_late_minutes) AS total_late_minutes,
+        SUM(wa.week_late_days) AS total_late_days,
+        SUM(wa.week_days_worked) AS total_days_worked,
+        SUM(GREATEST(wa.total_week_hours - 40.0, 0)) AS total_ot_hours,
+        SUM(GREATEST(wa.total_week_hours - 40.0, 0) * emp.hourly_rate * 1.25) AS total_ot_pay,
+        SUM(
+            (LEAST(wa.total_week_hours, 40.0) * emp.hourly_rate) + 
+            (GREATEST(wa.total_week_hours - 40.0, 0) * emp.hourly_rate * 1.25)
+        ) AS dynamic_monthly_gross
+    FROM weekly_aggregated wa
+    JOIN employees emp ON wa.employee_id = emp.employee_id
+    GROUP BY wa.employee_id
+),
+statutory_calculations AS (
+
+    SELECT 
+        e.employee_id AS employee_num,
+        CONCAT(e.last_name, ', ', e.first_name) AS employee_name,
+        e.position,
+        IFNULL(jd.department_name, 'General') AS department,
+        e.basic_salary AS monthly_salary,
+        e.hourly_rate AS hourly_rate,
+        mpp.total_days_worked AS days_worked,
+        mpp.total_ot_hours AS overtime_hours,
+        ROUND(mpp.total_ot_pay, 2) AS overtime_pay,
+        mpp.total_late_minutes AS late_minutes,
+        mpp.total_late_days AS days_late,
+        ROUND(mpp.total_late_minutes * (e.hourly_rate / 60), 2) AS late_deduction,
+        ROUND(mpp.dynamic_monthly_gross, 2) AS gross_income,
+        IFNULL(e.rice_subsidy, 0) AS rice_subsidy,
+        IFNULL(e.phone_allowance, 0) AS phone_allowance,
+        IFNULL(e.clothing_allowance, 0) AS clothing_allowance,
+        ROUND(IFNULL(e.rice_subsidy, 0) + IFNULL(e.phone_allowance, 0) + IFNULL(e.clothing_allowance, 0), 2) AS total_benefits,
+
+        -- SSS Matrix
+        CASE
+            WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00
+        END AS sss,
+
+        CASE WHEN (e.basic_salary * 0.03) > 1800.00 THEN 900.00 ELSE ROUND((e.basic_salary * 0.03) / 2, 2) END AS ph,
+        CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END AS pi,
+
+        ROUND(
+            mpp.dynamic_monthly_gross -
+            ((CASE WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END) +
+             CASE WHEN (e.basic_salary * 0.03) > 1800.00 THEN 900.00 ELSE ROUND((e.basic_salary * 0.03) / 2, 2) END +
+             CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END),
+            2
+        ) AS taxable_income
+    FROM employees e
+    LEFT JOIN job_departments jd ON e.position = jd.position_name
+    JOIN monthly_payroll_pivot mpp ON e.employee_id = mpp.employee_id
+)
+SELECT 
+    sc.employee_num, sc.employee_name, sc.position, sc.department, sc.monthly_salary, sc.hourly_rate,
+    sc.days_worked, sc.overtime_hours, sc.overtime_pay, sc.late_minutes, sc.days_late, sc.late_deduction, sc.gross_income,
+    sc.rice_subsidy, sc.phone_allowance, sc.clothing_allowance, sc.total_benefits,
+    sc.sss AS social_security_system, sc.ph AS philhealth, sc.pi AS pag_ibig,
+
     ROUND(
-        (CASE WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END) +
-        (CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE (e.basic_salary * 0.03) / 2 END) +
-        (CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) END) +
-        (e.basic_salary * 0.12) +
-        (COALESCE(att.total_late_minutes, 0) * (e.hourly_rate / 60)),
-        2
+        CASE 
+            WHEN sc.taxable_income <= 20833 THEN 0
+            WHEN sc.taxable_income <= 33332 THEN (sc.taxable_income - 20833) * 0.2
+            WHEN sc.taxable_income <= 66666 THEN 2500 + (sc.taxable_income - 33333) * 0.25
+            WHEN sc.taxable_income <= 166666 THEN 10833 + (sc.taxable_income - 66667) * 0.3
+            WHEN sc.taxable_income <= 666666 THEN 40833.33 + (sc.taxable_income - 166667) * 0.32
+            ELSE 200833.33 + (sc.taxable_income - 666667) * 0.35
+        END, 2
+    ) AS withholding_tax,
+
+    ROUND(
+        sc.sss + sc.ph + sc.pi + sc.late_deduction +
+        CASE 
+            WHEN sc.taxable_income <= 20833 THEN 0
+            WHEN sc.taxable_income <= 33332 THEN (sc.taxable_income - 20833) * 0.2
+            WHEN sc.taxable_income <= 66666 THEN 2500 + (sc.taxable_income - 33333) * 0.25
+            WHEN sc.taxable_income <= 166666 THEN 10833 + (sc.taxable_income - 66667) * 0.3
+            WHEN sc.taxable_income <= 666666 THEN 40833.33 + (sc.taxable_income - 166667) * 0.32
+            ELSE 200833.33 + (sc.taxable_income - 666667) * 0.35
+        END, 2
     ) AS total_deductions,
 
-    -- TAKE HOME PAY
     ROUND(
-        e.basic_salary
-        - (CASE WHEN e.basic_salary <= 3250 THEN 135.00 WHEN e.basic_salary <= 3750 THEN 157.50 WHEN e.basic_salary <= 4250 THEN 180.00 WHEN e.basic_salary <= 4750 THEN 202.50 WHEN e.basic_salary <= 5250 THEN 225.00 WHEN e.basic_salary <= 5750 THEN 247.50 WHEN e.basic_salary <= 6250 THEN 270.00 WHEN e.basic_salary <= 6750 THEN 292.50 WHEN e.basic_salary <= 7250 THEN 315.00 WHEN e.basic_salary <= 7750 THEN 337.50 WHEN e.basic_salary <= 8250 THEN 360.00 WHEN e.basic_salary <= 8750 THEN 382.50 WHEN e.basic_salary <= 9250 THEN 405.00 WHEN e.basic_salary <= 9750 THEN 427.50 WHEN e.basic_salary <= 10250 THEN 450.00 WHEN e.basic_salary <= 10750 THEN 472.50 WHEN e.basic_salary <= 11250 THEN 495.00 WHEN e.basic_salary <= 11750 THEN 517.50 WHEN e.basic_salary <= 12250 THEN 540.00 WHEN e.basic_salary <= 12750 THEN 562.50 WHEN e.basic_salary <= 13250 THEN 585.00 WHEN e.basic_salary <= 13750 THEN 607.50 WHEN e.basic_salary <= 14250 THEN 630.00 WHEN e.basic_salary <= 14750 THEN 652.50 WHEN e.basic_salary <= 15250 THEN 675.00 WHEN e.basic_salary <= 15750 THEN 697.50 WHEN e.basic_salary <= 16250 THEN 720.00 WHEN e.basic_salary <= 16750 THEN 742.50 WHEN e.basic_salary <= 17250 THEN 765.00 WHEN e.basic_salary <= 17750 THEN 787.50 WHEN e.basic_salary <= 18250 THEN 810.00 WHEN e.basic_salary <= 18750 THEN 832.50 WHEN e.basic_salary <= 19250 THEN 855.00 WHEN e.basic_salary <= 19750 THEN 877.50 WHEN e.basic_salary <= 20250 THEN 900.00 WHEN e.basic_salary <= 20750 THEN 922.50 WHEN e.basic_salary <= 21250 THEN 945.00 WHEN e.basic_salary <= 21750 THEN 967.50 WHEN e.basic_salary <= 22250 THEN 990.00 WHEN e.basic_salary <= 22750 THEN 1012.50 WHEN e.basic_salary <= 23250 THEN 1035.00 WHEN e.basic_salary <= 23750 THEN 1057.50 WHEN e.basic_salary <= 24250 THEN 1080.00 WHEN e.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END)
-        - (CASE WHEN (e.basic_salary * 0.03) > 1800 THEN 900.00 ELSE (e.basic_salary * 0.03) / 2 END)
-        - (CASE WHEN (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE (e.basic_salary * CASE WHEN e.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) END)
-        - (e.basic_salary * 0.12)
-        - (COALESCE(att.total_late_minutes, 0) * (e.hourly_rate / 60))
-        + (COALESCE(att.total_ot_hours, 0) * e.hourly_rate * 1.25)
-        + COALESCE(e.rice_subsidy, 0) + COALESCE(e.phone_allowance, 0) + COALESCE(e.clothing_allowance, 0),
-        2
+        sc.gross_income - (sc.sss + sc.ph + sc.pi + sc.late_deduction +
+        CASE 
+            WHEN sc.taxable_income <= 20833 THEN 0
+            WHEN sc.taxable_income <= 33332 THEN (sc.taxable_income - 20833) * 0.2
+            WHEN sc.taxable_income <= 66666 THEN 2500 + (sc.taxable_income - 33333) * 0.25
+            WHEN sc.taxable_income <= 166666 THEN 10833 + (sc.taxable_income - 66667) * 0.3
+            WHEN sc.taxable_income <= 666666 THEN 40833.33 + (sc.taxable_income - 166667) * 0.32
+            ELSE 200833.33 + (sc.taxable_income - 666667) * 0.35
+        END) + sc.total_benefits, 2
     ) AS take_home_pay
-
-FROM employees e
-LEFT JOIN (
-    SELECT
-        employee_id,
-        COUNT(log_date) AS total_days,
-        SUM(CASE WHEN TIME_TO_SEC(TIMEDIFF(time_out, time_in))/3600 > 9 THEN (TIME_TO_SEC(TIMEDIFF(time_out, time_in))/3600) - 9 ELSE 0 END) AS total_ot_hours,
-        
-        -- grace period 15mins
-        SUM(CASE WHEN time_in > '08:15:00' THEN TIME_TO_SEC(TIMEDIFF(time_in, '08:00:00')) / 60 ELSE 0 END) AS total_late_minutes
-    FROM attendance_logs
-    WHERE MONTH(log_date) = $P{MonthParameter} AND YEAR(log_date) = $P{YearParameter}
-    GROUP BY employee_id
-) att ON e.employee_id = att.employee_id
-WHERE e.employee_id = $P{EmpIDParameter};]]>
+FROM statutory_calculations sc;]]>
 	</queryString>
 	<field name="employee_num" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="employee_id"/>
+		<property name="com.jaspersoft.studio.field.name" value="employee_num"/>
 		<property name="com.jaspersoft.studio.field.label" value="employee_num"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="e"/>
 	</field>
 	<field name="employee_name" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="employee_name"/>
@@ -95,38 +163,32 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 	<field name="position" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="position"/>
 		<property name="com.jaspersoft.studio.field.label" value="position"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="e"/>
 	</field>
 	<field name="department" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="department"/>
 		<property name="com.jaspersoft.studio.field.label" value="department"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="job_departments"/>
 	</field>
 	<field name="monthly_salary" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="basic_salary"/>
+		<property name="com.jaspersoft.studio.field.name" value="monthly_salary"/>
 		<property name="com.jaspersoft.studio.field.label" value="monthly_salary"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="e"/>
 	</field>
 	<field name="hourly_rate" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="hourly_rate"/>
 		<property name="com.jaspersoft.studio.field.label" value="hourly_rate"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="e"/>
 	</field>
-	<field name="start_date" class="java.sql.Date">
-		<property name="com.jaspersoft.studio.field.name" value="start_date"/>
-		<property name="com.jaspersoft.studio.field.label" value="start_date"/>
-	</field>
-	<field name="end_date" class="java.sql.Date">
-		<property name="com.jaspersoft.studio.field.name" value="end_date"/>
-		<property name="com.jaspersoft.studio.field.label" value="end_date"/>
-	</field>
-	<field name="days_worked" class="java.lang.Long">
+	<field name="days_worked" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="days_worked"/>
 		<property name="com.jaspersoft.studio.field.label" value="days_worked"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="mpp"/>
 	</field>
 	<field name="overtime_hours" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="overtime_hours"/>
 		<property name="com.jaspersoft.studio.field.label" value="overtime_hours"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="mpp"/>
 	</field>
 	<field name="overtime_pay" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="overtime_pay"/>
@@ -135,6 +197,12 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 	<field name="late_minutes" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="late_minutes"/>
 		<property name="com.jaspersoft.studio.field.label" value="late_minutes"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="mpp"/>
+	</field>
+	<field name="days_late" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="days_late"/>
+		<property name="com.jaspersoft.studio.field.label" value="days_late"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="mpp"/>
 	</field>
 	<field name="late_deduction" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="late_deduction"/>
@@ -161,15 +229,15 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 		<property name="com.jaspersoft.studio.field.label" value="total_benefits"/>
 	</field>
 	<field name="social_security_system" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="social_security_system"/>
+		<property name="com.jaspersoft.studio.field.name" value="sss"/>
 		<property name="com.jaspersoft.studio.field.label" value="social_security_system"/>
 	</field>
 	<field name="philhealth" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="philhealth"/>
+		<property name="com.jaspersoft.studio.field.name" value="ph"/>
 		<property name="com.jaspersoft.studio.field.label" value="philhealth"/>
 	</field>
 	<field name="pag_ibig" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="pag_ibig"/>
+		<property name="com.jaspersoft.studio.field.name" value="pi"/>
 		<property name="com.jaspersoft.studio.field.label" value="pag_ibig"/>
 	</field>
 	<field name="withholding_tax" class="java.math.BigDecimal">
@@ -421,7 +489,7 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 				<reportElement mode="Transparent" x="80" y="199" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="39459caa-389a-4d48-b6c4-7c43befee49b">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
 					<font size="7" isBold="true"/>
 					<paragraph lineSpacingSize="1.0"/>
 				</textElement>
@@ -434,7 +502,7 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 				<reportElement mode="Transparent" x="82" y="200" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="b1d726e8-6a35-4cb6-b43d-feb5bef0f595">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="html">
 					<font size="7" isBold="true"/>
 					<paragraph lineSpacingSize="1.0"/>
 				</textElement>
@@ -451,34 +519,14 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 				<text><![CDATA[Total Deductions]]></text>
 			</staticText>
 			<staticText>
-				<reportElement mode="Transparent" x="80" y="224" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="77d9b346-2531-489d-8fd2-23fbd36c84ee">
+				<reportElement mode="Transparent" x="80" y="236" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="22d2c188-7f25-4320-9dc6-0232a2310258">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
 					<font size="7" isBold="false"/>
 					<paragraph lineSpacingSize="1.0"/>
 				</textElement>
-				<text><![CDATA[Philhealth]]></text>
-			</staticText>
-			<staticText>
-				<reportElement mode="Transparent" x="80" y="236" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="89f1b897-18ae-41f9-b0cc-0d693ca9879c">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
-					<font size="7" isBold="false"/>
-					<paragraph lineSpacingSize="1.0"/>
-				</textElement>
-				<text><![CDATA[Pag-Ibig]]></text>
-			</staticText>
-			<staticText>
-				<reportElement mode="Transparent" x="80" y="248" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="22d2c188-7f25-4320-9dc6-0232a2310258">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
-					<font size="7" isBold="false"/>
-					<paragraph lineSpacingSize="1.0"/>
-				</textElement>
-				<text><![CDATA[Withholding Tax]]></text>
+				<text><![CDATA[PAG-IBIG]]></text>
 			</staticText>
 			<staticText>
 				<reportElement mode="Transparent" x="80" y="212" width="79" height="12" forecolor="#000000" backcolor="#515155" uuid="d7af2f7c-f2e5-4eda-98f9-1af88658ccde">
@@ -586,51 +634,6 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 				</textElement>
 				<textFieldExpression><![CDATA["PS-" + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")) + "-" + $F{employee_num}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="380" y="60" width="63" height="12" uuid="7d1cc11e-4b24-402a-ad20-565777ef7ce0">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="56412a35-87cc-4ce0-a14d-c6efaab3a7d3"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{monthly_salary}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="71" width="63" height="13" uuid="eb75fd9a-fc40-44f6-84d5-8bd76a1ec813">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="ab6ae481-935e-49f2-b9a5-f3bbf999c295"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{hourly_rate}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="84" width="60" height="12" uuid="ed16bb3f-9e1e-4728-b7f8-697ba12c01fb">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e5108abd-9eb2-42d8-85ca-58f5b7af5efd"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{days_worked}]]></textFieldExpression>
-			</textField>
-			<textField isBlankWhenNull="true">
-				<reportElement x="380" y="96" width="63" height="11" uuid="b818eced-d3eb-4004-9989-eda3b97d438e">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2c80e38e-b95c-45a9-a505-65cbb43e23ab"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{overtime_hours}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="119" width="59" height="12" uuid="e07c1b54-8d1d-4f92-b9de-dfdc2124d8ce">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a7501f77-6810-4ed3-99bd-34b92d7f0598"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{gross_income}]]></textFieldExpression>
-			</textField>
 			<staticText>
 				<reportElement mode="Transparent" x="80" y="108" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="54673be4-c684-425d-bc04-c6d954b2c56a">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
@@ -641,98 +644,8 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 				</textElement>
 				<text><![CDATA[Overtime Pay]]></text>
 			</staticText>
-			<textField isBlankWhenNull="true">
-				<reportElement x="380" y="108" width="64" height="12" uuid="15909bfd-8da0-41e8-ac6c-8b4e966ccfb0">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="3781ede2-1342-43ea-b0b1-7c8c434153df"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{overtime_pay}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="141" width="58" height="12" uuid="53fa19d0-755d-4e6e-a565-f6f65053bd59">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6460828b-dd9b-4fe0-a4f2-5ff3129d3072"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{rice_subsidy}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="153" width="73" height="11" uuid="9d621867-c9d8-49b8-8e58-873fe8e08900">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6822af0d-0e00-4cfd-968c-9a6405031b58"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{phone_allowance}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="164" width="73" height="12" uuid="9faeda4c-e10f-481b-b7d0-238b765c44bd">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e6f42ddf-08d9-4a65-bc87-fc45536c8f3e"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{clothing_allowance}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="176" width="64" height="12" uuid="7f7f9fb8-953b-4835-8e06-c24c9feb1e2c">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="06bd4aec-bc06-4638-94d4-427725062fc6"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{total_benefits}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="212" width="100" height="12" uuid="b29a7109-bbfa-423f-8c3e-b2f618e17f0f">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="77ce9e96-09fd-4856-8ee2-45d42fb530d4"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{social_security_system}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="224" width="50" height="12" uuid="a3a96991-e04c-433c-9dea-92c05becd7b3">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d1322717-3037-468f-9b3a-fc09824372dc"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{philhealth}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="236" width="46" height="12" uuid="0ca09f6a-92e1-4800-8597-171b5d846f61">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c30c2197-152a-490a-a863-be1e051df881"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{pag_ibig}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="248" width="62" height="12" uuid="b9d98faf-55c1-40b1-aa6e-9273b4ba134f">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="06e1a5a6-7bc5-4e70-a90a-4776ac0c7cd0"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{withholding_tax}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="380" y="277" width="64" height="12" uuid="794466ec-078f-44f5-8e88-f82426322c01">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2f45c2b8-5272-4969-8af7-fe566b9e08f3"/>
-				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{total_deductions}]]></textFieldExpression>
-			</textField>
 			<staticText>
-				<reportElement mode="Transparent" x="80" y="260" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="fe2e8f64-241e-409a-9e9f-63ae5fcc3b59">
+				<reportElement mode="Transparent" x="79" y="260" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="fe2e8f64-241e-409a-9e9f-63ae5fcc3b59">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
@@ -755,50 +668,205 @@ WHERE e.employee_id = $P{EmpIDParameter};]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{YearParameter}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement x="379" y="260" width="66" height="9" uuid="73598220-98be-49d2-80cc-c66a7ed08441">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="52e78279-3b8f-46f2-a20a-106ae047e716"/>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="224" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="a1fdbf5a-3896-4114-87fa-02d68fa11c85">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[PhilHealth]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="80" y="248" width="70" height="12" forecolor="#000000" backcolor="#515155" uuid="d974f67d-64cd-4298-8060-6fa879663777">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle" markup="html">
+					<font size="7" isBold="false"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Withholding Tax]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="380" y="61" width="98" height="11" uuid="50e308c7-bc11-4ce5-a73a-a23ceb8cf318">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="3efc5e6d-96b1-4d83-a367-ec758b613147"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{monthly_salary}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="72" width="99" height="12" uuid="05043765-b629-4b86-b434-c209147b7cc7">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="ccbb2ace-3cf6-4107-9be6-dd724bc57076"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hourly_rate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="84" width="100" height="12" uuid="2cd0dd9d-883f-44ce-9eee-af408ebcd1dd">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="600d8bb1-9ded-4367-afe8-4fc705623ef4"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{days_worked}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.0">
+				<reportElement x="380" y="96" width="100" height="12" uuid="4035b6e5-2d19-45c6-a107-66b69978da8f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="00522e8d-4829-4faf-9fb0-832febec361a"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{overtime_hours}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="108" width="100" height="12" uuid="5babd8a8-a6c1-4f2f-8344-f1df79a015e9">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0b15b71c-4a94-4713-ad43-6de6624a7008"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{overtime_pay}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="260" width="100" height="12" uuid="2d953b9d-63d2-42e5-88c1-ec4543a0edf2">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2d3b23a3-5f37-4168-9aec-2a8dfb35ac39"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{late_deduction}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="379" y="301" width="63" height="10" uuid="37996a6a-6167-4270-9b56-77421418abd1">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="13ca047c-adca-44c6-b21d-7cac3bfd8f0f"/>
+				<reportElement x="380" y="120" width="100" height="10" uuid="58083b53-968c-4e90-b22a-3f46cfbf64fd">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="43d98914-e2c1-4d53-bd05-afb46355860a"/>
 				</reportElement>
-				<textElement>
-					<font fontName="SansSerif" size="7"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{gross_income}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="379" y="310" width="63" height="12" uuid="608b3636-9461-43e2-aea1-1233f9da8eee">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="06bd4aec-bc06-4638-94d4-427725062fc6"/>
+				<reportElement x="380" y="141" width="100" height="12" uuid="9e33473f-17ad-4ce8-a006-51d7ab92fc90">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4967db0d-aa0e-494d-8184-6142bb84f613"/>
 				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{rice_subsidy}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="153" width="100" height="12" uuid="9a66cfac-334b-4fd6-9d47-291297cc4fb4">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c0a7571a-881a-4ba2-8c53-ecae44e202d7"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{phone_allowance}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="165" width="100" height="12" uuid="cea92cb6-69a6-4c68-bca4-1f64a7c87d3e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6ef324c6-42a7-4098-b8de-7e6a19685512"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{clothing_allowance}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="177" width="100" height="12" uuid="520bb0da-fc7f-40c9-bc19-6f9e5d3ddff9">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="de35638e-bdad-4687-8e16-556d097d02c7"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{total_benefits}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="379" y="322" width="64" height="12" uuid="f984030f-2158-4695-b519-c265ca9606b8">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2f45c2b8-5272-4969-8af7-fe566b9e08f3"/>
+				<reportElement x="380" y="212" width="100" height="12" uuid="b168668c-bf37-4b35-9121-802e49e91e19">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="cb8ccf18-a1fc-4f75-b490-aa0c5861921f"/>
 				</reportElement>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="SansSerif" size="7"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{social_security_system}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="224" width="100" height="12" uuid="5f1a64a0-9fa2-413a-90df-0d9491c7c35e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="fda8d36f-a09e-4103-a494-59d317ece213"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{philhealth}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="236" width="100" height="12" uuid="1dbde61c-deb4-4acb-8e9a-9cc5e72dc715">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0fc4963d-7eb1-4d77-94e6-fabf8c9ba5c1"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{pag_ibig}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="248" width="100" height="12" uuid="cf6bb09a-81e6-418c-9f7d-cb9e7fdde6ca">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="38c57f65-1f08-4c23-aba7-3fff7f80f08e"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{withholding_tax}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="277" width="100" height="12" uuid="a2e5fdd2-f22f-41a7-aa38-5560306b48b8">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="09359e2a-0904-4132-987d-61790c7b8947"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{total_deductions}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="379" y="335" width="65" height="12" uuid="72f53456-bbe5-4436-a5be-f5c9a8f8c024">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8fe6fa3e-11a2-447e-b505-96f03147f9cb"/>
+				<reportElement x="380" y="335" width="100" height="12" uuid="d6af38d5-753b-4002-9bb0-5f20f3dfa024">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="fb612495-b2c3-4bac-986d-bc25af9c58c6"/>
 				</reportElement>
-				<textElement>
-					<font fontName="SansSerif" size="7"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{take_home_pay}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="323" width="100" height="12" uuid="57ecaec0-ff7a-4657-84ee-68cccc73fa96">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="09359e2a-0904-4132-987d-61790c7b8947"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{total_deductions}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="312" width="100" height="10" uuid="5718199c-926b-4d0a-b02b-02c60874abdc">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="de35638e-bdad-4687-8e16-556d097d02c7"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{total_benefits}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="380" y="301" width="100" height="10" uuid="9a89d31b-e8c4-4f81-9ff2-e2f6c3412572">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="43d98914-e2c1-4d53-bd05-afb46355860a"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{gross_income}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>

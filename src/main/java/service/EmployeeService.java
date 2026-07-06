@@ -9,6 +9,7 @@ import model.Employee;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.ArrayList;
+import model.EmployeeStatus;
 
 public class EmployeeService {
     private static final Logger logger = Logger.getLogger(EmployeeService.class.getName());
@@ -121,4 +122,21 @@ public class EmployeeService {
     logger.warning("Update failed: Employee ID " + updatedEmployee.getEmployeeId() + " not found.");
     return false;
 }    
+    
+
+    public boolean registerEmployee(String[] data) throws Exception {
+
+        if (findEmployeeById(data[0]) != null) {
+            throw new Exception("Employee Number " + data[0] + " already exists!");
+        }
+
+
+        Employee employee = EmployeeStatus.createFromDb(data);
+        if (employee == null) {
+         throw new IllegalStateException("Unable to resolve object structure.");
+     }
+
+   
+        return addEmployee(employee);
+    }
 }
