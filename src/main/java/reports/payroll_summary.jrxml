@@ -1,0 +1,534 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 7.0.6.final using JasperReports Library version 6.19.0  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="payroll_summary" pageWidth="900" pageHeight="595" columnWidth="860" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="05b8a7f7-8358-434c-8998-ab053d5b6106">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="aoop_s2101"/>
+	<parameter name="LogoParameter" class="java.io.InputStream">
+		<defaultValueExpression><![CDATA[$P{LogoParameter}]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DeptParameter" class="java.lang.String"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT 
+    e.employee_id,
+    CONCAT(e.last_name, ', ', e.first_name) AS full_name,
+    e.position,
+    jd.department_name AS department, 
+    e.basic_salary AS gross_income,
+    e.sss_number,
+
+    sss.sss_contribution,
+    e.philhealth_number,
+    ph.philhealth_contribution,
+    e.pagibig_number,
+    pi.pagibig_contribution,
+    e.tin_number,
+
+    -- FIX: replaced flat 12% with the actual progressive BIR bracket formula,
+    -- matching Employee.calculateWithholdingTax() in Java
+    ROUND(
+        CASE 
+            WHEN sss.taxable_income <= 20833 THEN 0
+            WHEN sss.taxable_income <= 33332 THEN (sss.taxable_income - 20833) * 0.2
+            WHEN sss.taxable_income <= 66666 THEN 2500 + (sss.taxable_income - 33333) * 0.25
+            WHEN sss.taxable_income <= 166666 THEN 10833 + (sss.taxable_income - 66667) * 0.3
+            WHEN sss.taxable_income <= 666666 THEN 40833.33 + (sss.taxable_income - 166667) * 0.32
+            ELSE 200833.33 + (sss.taxable_income - 666667) * 0.35
+        END, 2
+    ) AS withholding_tax,
+
+    ROUND(
+        e.basic_salary 
+        - sss.sss_contribution
+        - ph.philhealth_contribution
+        - pi.pagibig_contribution
+        - (CASE 
+            WHEN sss.taxable_income <= 20833 THEN 0
+            WHEN sss.taxable_income <= 33332 THEN (sss.taxable_income - 20833) * 0.2
+            WHEN sss.taxable_income <= 66666 THEN 2500 + (sss.taxable_income - 33333) * 0.25
+            WHEN sss.taxable_income <= 166666 THEN 10833 + (sss.taxable_income - 66667) * 0.3
+            WHEN sss.taxable_income <= 666666 THEN 40833.33 + (sss.taxable_income - 166667) * 0.32
+            ELSE 200833.33 + (sss.taxable_income - 666667) * 0.35
+          END)
+        + COALESCE(e.rice_subsidy, 0) + COALESCE(e.phone_allowance, 0) + COALESCE(e.clothing_allowance, 0),
+        2
+    ) AS net_pay
+
+FROM employees e
+INNER JOIN job_departments jd ON e.position = jd.position_name 
+-- Precompute SSS/PhilHealth/Pag-IBIG once (rounded consistently) and derive taxable_income
+-- from those SAME rounded values, so the displayed columns and net_pay always agree.
+JOIN (
+    SELECT 
+        e2.employee_id,
+        (CASE 
+            WHEN e2.basic_salary <= 3250 THEN 135.00 WHEN e2.basic_salary <= 3750 THEN 157.50 WHEN e2.basic_salary <= 4250 THEN 180.00 WHEN e2.basic_salary <= 4750 THEN 202.50 WHEN e2.basic_salary <= 5250 THEN 225.00 WHEN e2.basic_salary <= 5750 THEN 247.50 WHEN e2.basic_salary <= 6250 THEN 270.00 WHEN e2.basic_salary <= 6750 THEN 292.50 WHEN e2.basic_salary <= 7250 THEN 315.00 WHEN e2.basic_salary <= 7750 THEN 337.50 WHEN e2.basic_salary <= 8250 THEN 360.00 WHEN e2.basic_salary <= 8750 THEN 382.50 WHEN e2.basic_salary <= 9250 THEN 405.00 WHEN e2.basic_salary <= 9750 THEN 427.50 WHEN e2.basic_salary <= 10250 THEN 450.00 WHEN e2.basic_salary <= 10750 THEN 472.50 WHEN e2.basic_salary <= 11250 THEN 495.00 WHEN e2.basic_salary <= 11750 THEN 517.50 WHEN e2.basic_salary <= 12250 THEN 540.00 WHEN e2.basic_salary <= 12750 THEN 562.50 WHEN e2.basic_salary <= 13250 THEN 585.00 WHEN e2.basic_salary <= 13750 THEN 607.50 WHEN e2.basic_salary <= 14250 THEN 630.00 WHEN e2.basic_salary <= 14750 THEN 652.50 WHEN e2.basic_salary <= 15250 THEN 675.00 WHEN e2.basic_salary <= 15750 THEN 697.50 WHEN e2.basic_salary <= 16250 THEN 720.00 WHEN e2.basic_salary <= 16750 THEN 742.50 WHEN e2.basic_salary <= 17250 THEN 765.00 WHEN e2.basic_salary <= 17750 THEN 787.50 WHEN e2.basic_salary <= 18250 THEN 810.00 WHEN e2.basic_salary <= 18750 THEN 832.50 WHEN e2.basic_salary <= 19250 THEN 855.00 WHEN e2.basic_salary <= 19750 THEN 877.50 WHEN e2.basic_salary <= 20250 THEN 900.00 WHEN e2.basic_salary <= 20750 THEN 922.50 WHEN e2.basic_salary <= 21250 THEN 945.00 WHEN e2.basic_salary <= 21750 THEN 967.50 WHEN e2.basic_salary <= 22250 THEN 990.00 WHEN e2.basic_salary <= 22750 THEN 1012.50 WHEN e2.basic_salary <= 23250 THEN 1035.00 WHEN e2.basic_salary <= 23750 THEN 1057.50 WHEN e2.basic_salary <= 24250 THEN 1080.00 WHEN e2.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00
+        END) AS sss_contribution,
+        ROUND(
+            e2.basic_salary
+            - (CASE WHEN e2.basic_salary <= 3250 THEN 135.00 WHEN e2.basic_salary <= 3750 THEN 157.50 WHEN e2.basic_salary <= 4250 THEN 180.00 WHEN e2.basic_salary <= 4750 THEN 202.50 WHEN e2.basic_salary <= 5250 THEN 225.00 WHEN e2.basic_salary <= 5750 THEN 247.50 WHEN e2.basic_salary <= 6250 THEN 270.00 WHEN e2.basic_salary <= 6750 THEN 292.50 WHEN e2.basic_salary <= 7250 THEN 315.00 WHEN e2.basic_salary <= 7750 THEN 337.50 WHEN e2.basic_salary <= 8250 THEN 360.00 WHEN e2.basic_salary <= 8750 THEN 382.50 WHEN e2.basic_salary <= 9250 THEN 405.00 WHEN e2.basic_salary <= 9750 THEN 427.50 WHEN e2.basic_salary <= 10250 THEN 450.00 WHEN e2.basic_salary <= 10750 THEN 472.50 WHEN e2.basic_salary <= 11250 THEN 495.00 WHEN e2.basic_salary <= 11750 THEN 517.50 WHEN e2.basic_salary <= 12250 THEN 540.00 WHEN e2.basic_salary <= 12750 THEN 562.50 WHEN e2.basic_salary <= 13250 THEN 585.00 WHEN e2.basic_salary <= 13750 THEN 607.50 WHEN e2.basic_salary <= 14250 THEN 630.00 WHEN e2.basic_salary <= 14750 THEN 652.50 WHEN e2.basic_salary <= 15250 THEN 675.00 WHEN e2.basic_salary <= 15750 THEN 697.50 WHEN e2.basic_salary <= 16250 THEN 720.00 WHEN e2.basic_salary <= 16750 THEN 742.50 WHEN e2.basic_salary <= 17250 THEN 765.00 WHEN e2.basic_salary <= 17750 THEN 787.50 WHEN e2.basic_salary <= 18250 THEN 810.00 WHEN e2.basic_salary <= 18750 THEN 832.50 WHEN e2.basic_salary <= 19250 THEN 855.00 WHEN e2.basic_salary <= 19750 THEN 877.50 WHEN e2.basic_salary <= 20250 THEN 900.00 WHEN e2.basic_salary <= 20750 THEN 922.50 WHEN e2.basic_salary <= 21250 THEN 945.00 WHEN e2.basic_salary <= 21750 THEN 967.50 WHEN e2.basic_salary <= 22250 THEN 990.00 WHEN e2.basic_salary <= 22750 THEN 1012.50 WHEN e2.basic_salary <= 23250 THEN 1035.00 WHEN e2.basic_salary <= 23750 THEN 1057.50 WHEN e2.basic_salary <= 24250 THEN 1080.00 WHEN e2.basic_salary <= 24750 THEN 1102.50 ELSE 1125.00 END)
+            - (CASE WHEN (e2.basic_salary * 0.03) > 1800 THEN 900.00 ELSE ROUND((e2.basic_salary * 0.03) / 2, 2) END)
+            - (CASE WHEN (e2.basic_salary * CASE WHEN e2.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e2.basic_salary * CASE WHEN e2.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END),
+            2
+        ) AS taxable_income
+    FROM employees e2
+) sss ON sss.employee_id = e.employee_id
+JOIN (
+    SELECT 
+        e3.employee_id,
+        CASE WHEN (e3.basic_salary * 0.03) > 1800 THEN 900.00 ELSE ROUND((e3.basic_salary * 0.03) / 2, 2) END AS philhealth_contribution
+    FROM employees e3
+) ph ON ph.employee_id = e.employee_id
+JOIN (
+    SELECT 
+        e4.employee_id,
+        CASE WHEN (e4.basic_salary * CASE WHEN e4.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END) > 100.00 THEN 100.00 ELSE ROUND(e4.basic_salary * CASE WHEN e4.basic_salary <= 1500 THEN 0.01 ELSE 0.02 END, 2) END AS pagibig_contribution
+    FROM employees e4
+) pi ON pi.employee_id = e.employee_id
+
+WHERE jd.department_name = $P{DeptParameter} 
+ORDER BY e.employee_id ASC;]]>
+	</queryString>
+	<field name="employee_id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="employee_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="employee_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="full_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="full_name"/>
+		<property name="com.jaspersoft.studio.field.label" value="full_name"/>
+	</field>
+	<field name="position" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="position"/>
+		<property name="com.jaspersoft.studio.field.label" value="position"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="department" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="department_name"/>
+		<property name="com.jaspersoft.studio.field.label" value="department"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="job_departments"/>
+	</field>
+	<field name="gross_income" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="basic_salary"/>
+		<property name="com.jaspersoft.studio.field.label" value="gross_income"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="sss_number" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="sss_number"/>
+		<property name="com.jaspersoft.studio.field.label" value="sss_number"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="sss_contribution" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sss_contribution"/>
+		<property name="com.jaspersoft.studio.field.label" value="sss_contribution"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="philhealth_number" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="philhealth_number"/>
+		<property name="com.jaspersoft.studio.field.label" value="philhealth_number"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="philhealth_contribution" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="philhealth_contribution"/>
+		<property name="com.jaspersoft.studio.field.label" value="philhealth_contribution"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="pagibig_number" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="pagibig_number"/>
+		<property name="com.jaspersoft.studio.field.label" value="pagibig_number"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="pagibig_contribution" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="pagibig_contribution"/>
+		<property name="com.jaspersoft.studio.field.label" value="pagibig_contribution"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="tin_number" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tin_number"/>
+		<property name="com.jaspersoft.studio.field.label" value="tin_number"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="withholding_tax" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="withholding_tax"/>
+		<property name="com.jaspersoft.studio.field.label" value="withholding_tax"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<field name="net_pay" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="net_pay"/>
+		<property name="com.jaspersoft.studio.field.label" value="net_pay"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="employees"/>
+	</field>
+	<variable name="SUB_GROSS" class="java.math.BigDecimal" resetType="Group" resetGroup="DepartmentGroup" calculation="Sum">
+		<variableDescription><![CDATA[sum]]></variableDescription>
+		<variableExpression><![CDATA[$F{gross_income}]]></variableExpression>
+	</variable>
+	<variable name="SUB_SSS" class="java.math.BigDecimal" resetType="Group" resetGroup="DepartmentGroup" calculation="Sum">
+		<variableDescription><![CDATA[sum]]></variableDescription>
+		<variableExpression><![CDATA[$F{sss_contribution}]]></variableExpression>
+	</variable>
+	<variable name="SUB_PHealth" class="java.math.BigDecimal" resetType="Group" resetGroup="DepartmentGroup" calculation="Sum">
+		<variableExpression><![CDATA[$F{philhealth_contribution}]]></variableExpression>
+	</variable>
+	<variable name="SUM_PagIbig" class="java.math.BigDecimal" resetType="Group" resetGroup="DepartmentGroup" calculation="Sum">
+		<variableExpression><![CDATA[$F{pagibig_contribution}]]></variableExpression>
+	</variable>
+	<variable name="SUM_WHTax" class="java.math.BigDecimal" resetType="Group" resetGroup="DepartmentGroup" calculation="Sum">
+		<variableExpression><![CDATA[$F{withholding_tax}]]></variableExpression>
+	</variable>
+	<variable name="SUM_Netpay" class="java.math.BigDecimal" resetType="Group" resetGroup="DepartmentGroup" calculation="Sum">
+		<variableExpression><![CDATA[$F{net_pay}]]></variableExpression>
+	</variable>
+	<group name="DepartmentGroup">
+		<groupExpression><![CDATA[$F{department}]]></groupExpression>
+		<groupHeader>
+			<band/>
+		</groupHeader>
+		<groupFooter>
+			<band height="89">
+				<staticText>
+					<reportElement mode="Transparent" x="0" y="31" width="50" height="21" forecolor="#000000" backcolor="#515155" uuid="c244e0b2-3090-44bd-8c05-da6f12393008">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					</reportElement>
+					<textElement textAlignment="Center" markup="html">
+						<font size="7" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Total: ]]></text>
+				</staticText>
+				<line>
+					<reportElement x="-19" y="30" width="949" height="1" uuid="94a04040-864b-492b-a594-0bbeb3533431"/>
+				</line>
+				<textField>
+					<reportElement x="247" y="30" width="44" height="10" uuid="08d0082f-9ab3-4365-b3ae-a2653445b003"/>
+					<textElement>
+						<font size="7"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{SUB_GROSS}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="367" y="30" width="48" height="9" uuid="1493f78c-9f1d-49b0-b9f6-26bf6cacea58"/>
+					<textElement>
+						<font size="7"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{SUB_SSS}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="630" y="30" width="62" height="14" uuid="783c162d-f1f1-467b-83eb-579f0d517f5e"/>
+					<textElement>
+						<font size="7"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{SUB_PHealth}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="500" y="30" width="66" height="11" uuid="900915ae-fae8-4f4f-bd6a-180d9855afe5"/>
+					<textElement>
+						<font size="7"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{SUM_PagIbig}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="750" y="30" width="59" height="12" uuid="c1a2fba2-fa2d-4598-ab41-910a156c502d"/>
+					<textElement verticalAlignment="Top">
+						<font size="7"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{SUM_WHTax}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="820" y="30" width="59" height="12" uuid="be3edf4f-f125-4ce8-aa16-6dc2a4436f04"/>
+					<textElement>
+						<font size="7"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{SUM_Netpay}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band height="73" splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="119" splitType="Stretch">
+			<property name="com.jaspersoft.studio.layout"/>
+			<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+			<staticText>
+				<reportElement x="355" y="11" width="150" height="39" uuid="0961b49a-521a-4bda-b2e5-b3ef2fc48095"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial Black" size="23" isBold="true" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[MotorPH]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="275" y="69" width="300" height="30" uuid="47edd0ce-dd58-43e3-9023-fdae44b413ae"/>
+				<textElement textAlignment="Center">
+					<font size="9"/>
+				</textElement>
+				<text><![CDATA[      7 Jupiter Avenue cor. F. Sandoval Jr., Bagong Nayon, Quezon City]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="275" y="50" width="300" height="19" uuid="b42ac17c-0ea6-40cf-b4e4-1431211aca68"/>
+				<textElement textAlignment="Center">
+					<font size="9"/>
+				</textElement>
+				<text><![CDATA[      Phone: (028) 911-5071 / (028) 911-5072 / (028) 911-5073 ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="275" y="80" width="300" height="30" uuid="3922bfb7-cace-4afb-aed9-cd47a03fd41e"/>
+				<textElement textAlignment="Center" markup="html">
+					<font size="9"/>
+				</textElement>
+				<text><![CDATA[      Email: corporate@motorph.com]]></text>
+			</staticText>
+			<image scaleImage="FillFrame">
+				<reportElement x="38" y="0" width="219" height="119" uuid="1c297f6b-e4fd-4fd1-bdc2-bb193c26c0d1">
+					<property name="com.jaspersoft.studio.unit.x" value="pixel"/>
+				</reportElement>
+				<imageExpression><![CDATA[$P{LogoParameter}]]></imageExpression>
+			</image>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="45">
+			<rectangle>
+				<reportElement mode="Opaque" x="-20" y="20" width="900" height="20" forecolor="#0278B3" backcolor="#1A4469" uuid="07549bba-c3fc-4bfa-affb-f2b524bde603"/>
+			</rectangle>
+			<staticText>
+				<reportElement mode="Transparent" x="0" y="24" width="45" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="0e9d4b00-f7a2-402e-af40-17900bbf41af">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+					<paragraph lineSpacingSize="1.0"/>
+				</textElement>
+				<text><![CDATA[Employee #]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="45" y="24" width="56" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="47590b1a-683e-464a-8150-1959c07cf9b5">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="101" y="24" width="64" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="4a389015-bada-46c5-aa95-99d5f28c4e5d">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Position]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="165" y="24" width="65" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="6715d1d5-0599-481b-abe5-be21798e8045">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Department]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="230" y="24" width="65" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="77688725-369c-4ac3-9cc2-21a202cfe0cf">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Gross Income]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="291" y="24" width="59" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="c51ac4ab-a3cc-4c73-aeb0-a98545860eef">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[SSS #]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="350" y="24" width="65" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="7c305c64-09fc-44e1-88f3-c721e12bcada">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[SSS Contribution]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="415" y="24" width="65" height="12" forecolor="#10E3DC" backcolor="#515155" uuid="e04fa802-d848-44f0-800d-83120246417d">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Pag-IBIG #]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="480" y="20" width="65" height="20" forecolor="#10E3DC" backcolor="#515155" uuid="ed07423d-ae22-4860-9749-57f12fc5a56a">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Pag-IBIG 
+Contribution]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="545" y="25" width="65" height="10" forecolor="#10E3DC" backcolor="#515155" uuid="db4f4cd9-b650-4f65-8e42-7228fabaa57c">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Philhealth #]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="610" y="20" width="65" height="20" forecolor="#10E3DC" backcolor="#515155" uuid="7fa9144e-19f6-471d-b77f-6ecb616d4dab">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[PhilHealth
+Contribution]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="675" y="25" width="57" height="10" forecolor="#10E3DC" backcolor="#515155" uuid="72849588-1ca8-45fe-a6f5-ab26927b671f">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[TIN]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="732" y="25" width="65" height="10" forecolor="#10E3DC" backcolor="#515155" uuid="faf3d953-1a6c-4901-82cf-cf35e9ee9cdd">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Withholding Tax]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Transparent" x="797" y="25" width="65" height="10" forecolor="#10E3DC" backcolor="#515155" uuid="4c6cb37c-2084-4f60-9947-8066b59ff8d0">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" markup="html">
+					<font size="7" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Net Pay]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="270" height="20" forecolor="#5305A1" uuid="d9fb8c63-36c7-4bc4-98e3-c25b77daa481"/>
+				<textElement textAlignment="Left">
+					<font size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[MONTHLY PAYROLL SUMMARY REPORT]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="13">
+			<textField>
+				<reportElement x="165" y="-1" width="64" height="12" uuid="56c98234-3701-4fc1-a690-4d3ad086bd0a"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{department}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="44" height="10" uuid="0c68cc10-5071-417e-92a4-99e239db5320"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{employee_id}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="46" y="0" width="55" height="10" uuid="db5514d3-f920-428b-ab4d-6c5abeeaa7ad"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{full_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="101" y="-1" width="64" height="12" uuid="83df4d3e-00ea-445f-8bd0-61653b5802d9"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{position}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="230" y="0" width="65" height="11" uuid="ff35d1b1-193f-438e-8d9b-33c76b4921d8"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{gross_income}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="295" y="-1" width="58" height="12" uuid="bafb7226-47ba-49b9-881f-881c5d9c4d8c"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sss_number}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="350" y="0" width="66" height="13" uuid="279ffda2-a954-4105-9f55-94c5f2a636a6"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sss_contribution}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="416" y="-1" width="66" height="12" uuid="43c8e78a-742b-4c06-bfb0-da89e4f9cf87"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{pagibig_number}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="481" y="0" width="62" height="12" uuid="fe86e4b9-19f6-46b2-9567-7842793a8692"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{pagibig_contribution}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="543" y="1" width="65" height="12" uuid="f324cd78-d23d-47c5-8946-9fe7d2a787a9"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{philhealth_number}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="610" y="1" width="65" height="12" uuid="a89fdaa2-4722-45bd-a3db-1e94e244223f"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{philhealth_contribution}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="675" y="0" width="57" height="11" uuid="ffbaeba8-cecd-497c-9541-7e4164fb9e75"/>
+				<textElement textAlignment="Center">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tin_number}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="732" y="1" width="62" height="12" uuid="cee9679a-0bcc-4c1d-9006-9e8d151047a8"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{withholding_tax}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="797" y="0" width="70" height="12" uuid="9be30cbc-269b-4e95-a843-f2d6d56fcbbe"/>
+				<textElement textAlignment="Center">
+					<font size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{net_pay}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>
