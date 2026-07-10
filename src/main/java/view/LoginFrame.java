@@ -10,6 +10,7 @@ import javax.swing.border.EmptyBorder;
 import model.Employee;
 import service.AuthService;
 import service.ITService;
+import view.theme.UITheme;
 
 /**
  *
@@ -25,96 +26,91 @@ public class LoginFrame extends JFrame {
     private JButton loginButton;
     private int loginAttempts = 0;
     private static final int MAX_LOGIN_ATTEMPTS = 3;
-
+ 
     public LoginFrame() {
         initializeGUI();
     }
-
+ 
     private void initializeGUI() {
         setTitle("MotorPH | Secure Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         setSize(400, 550);
         setLocationRelativeTo(null);
-
+ 
         JPanel mainPanel = new JPanel(new GridBagLayout());
-        mainPanel.setBackground(new Color(44, 62, 80));
-
+        mainPanel.setBackground(UITheme.PRIMARY);
+ 
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(Color.WHITE);
+        card.setBackground(UITheme.BG_WHITE);
         card.setPreferredSize(new Dimension(320, 420));
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(230, 230, 230), 1),
-            new EmptyBorder(30, 30, 30, 30)
+            BorderFactory.createLineBorder(UITheme.BORDER_GRAY, 1),
+            new EmptyBorder(UITheme.SPACING_XL, UITheme.SPACING_XL, UITheme.SPACING_XL, UITheme.SPACING_XL)
         ));
-
+ 
         JLabel lblLogo = new JLabel("MotorPH");
-        lblLogo.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        lblLogo.setForeground(new Color(44, 62, 80));
+        lblLogo.setFont(UITheme.FONT_LOGO);
+        lblLogo.setForeground(UITheme.TEXT_PRIMARY);
         lblLogo.setAlignmentX(Component.CENTER_ALIGNMENT);
-
+ 
         JLabel lblSub = new JLabel("Management System");
-        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        lblSub.setForeground(Color.GRAY);
+        lblSub.setFont(UITheme.FONT_SUBHEADING);
+        lblSub.setForeground(UITheme.TEXT_MUTED);
         lblSub.setAlignmentX(Component.CENTER_ALIGNMENT);
-
+ 
         usernameField = new JTextField();
         styleField(usernameField, "Employee ID");
         passwordField = new JPasswordField();
         styleField(passwordField, "Password");
-
-   
+ 
         loginButton = new JButton("LOG IN");
-        loginButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        loginButton.setBackground(new Color(40, 167, 69)); // Success Green 
+        loginButton.setFont(UITheme.FONT_BUTTON);
+        loginButton.setBackground(UITheme.SUCCESS);
         loginButton.setForeground(Color.WHITE);
-        
-      
-        loginButton.setPreferredSize(new Dimension(260, 45));
-        loginButton.setMaximumSize(new Dimension(260, 45));
-        loginButton.setAlignmentX(Component.CENTER_ALIGNMENT); 
-        
+        loginButton.setPreferredSize(new Dimension(260, UITheme.BUTTON_HEIGHT + 5));
+        loginButton.setMaximumSize(new Dimension(260, UITheme.BUTTON_HEIGHT + 5));
+        loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         loginButton.setFocusPainted(false);
         loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
         loginButton.addActionListener(e -> performLogin());
-
+ 
         // Assembly
         card.add(lblLogo);
-        card.add(Box.createVerticalStrut(5));
+        card.add(Box.createVerticalStrut(UITheme.SPACING_XS));
         card.add(lblSub);
-        card.add(Box.createVerticalStrut(40));
+        card.add(Box.createVerticalStrut(UITheme.SPACING_XL + UITheme.SPACING_SM));
         card.add(usernameField);
-        card.add(Box.createVerticalStrut(20));
+        card.add(Box.createVerticalStrut(UITheme.SPACING_LG));
         card.add(passwordField);
-        card.add(Box.createVerticalStrut(40));
+        card.add(Box.createVerticalStrut(UITheme.SPACING_XL + UITheme.SPACING_SM));
         card.add(loginButton);
-
+ 
         mainPanel.add(card);
         add(mainPanel);
-
+ 
         this.getRootPane().setDefaultButton(loginButton);
     }
-
+ 
     private void styleField(JTextField field, String title) {
-        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, UITheme.INPUT_HEIGHT + 13));
+        field.setFont(UITheme.FONT_SUBHEADING);
         field.setBorder(BorderFactory.createTitledBorder(
-            BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(200, 200, 200)), title));
+            BorderFactory.createMatteBorder(0, 0, 2, 0, UITheme.BORDER_GRAY), title));
     }
-
+ 
     private void performLogin() {
         String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
-
+ 
         if (username.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                 "Please enter both username and password",
                 "Missing Information", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
+ 
         AuthService.LoginResult result = AuthService.getInstance().authenticate(username, password);
         if (result != null) {
             Employee user = result.employee;
@@ -122,14 +118,14 @@ public class LoginFrame extends JFrame {
                 JOptionPane.showMessageDialog(this,
                     "Login valid, but employee record not found in database.",
                     "Database Error", JOptionPane.ERROR_MESSAGE);
-                return; 
+                return;
             }
-
+ 
             JOptionPane.showMessageDialog(this,
                 "Login successful! Welcome, " + user.getFirstName() + " " + user.getLastName(),
                 "Success", JOptionPane.INFORMATION_MESSAGE);
             this.dispose();
-            
+ 
             SwingUtilities.invokeLater(() -> {
                 switch (result.viewType) {
                     case IT_DASHBOARD:
@@ -162,3 +158,4 @@ public class LoginFrame extends JFrame {
         }
     }
 }
+ 

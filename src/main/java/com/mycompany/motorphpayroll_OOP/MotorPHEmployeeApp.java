@@ -4,6 +4,7 @@
  */
 package com.mycompany.motorphpayroll_OOP;
 
+import com.formdev.flatlaf.FlatLightLaf;
 import view.LoginFrame;
 import javax.swing.*;
 /**
@@ -12,6 +13,7 @@ import javax.swing.*;
  */
 public class MotorPHEmployeeApp {
     public static void main(String[] args) {
+         FlatLightLaf.setup(); 
        SwingUtilities.invokeLater(() -> {
        new LoginFrame().setVisible(true);  
 });

@@ -4,11 +4,11 @@
  */
 package view;
 
+import view.theme.UITheme;
+import view.theme.UIComponents;
 import service.EmployeeService;
 import javax.swing.*;
-import java.awt.*;
-import model.Employee;
-import model.EmployeeStatus;
+import java.awt.*;  
 
 /**
  *
@@ -17,68 +17,60 @@ import model.EmployeeStatus;
 public class AddEmployeeFrame extends JFrame {
     private final MainFrame parentFrame;
     private final EmployeeService employeeDetails;
-    private EmployeeFormPanel formPanel; 
+    private EmployeeFormPanel formPanel;
     private JButton saveBtn, cancelBtn;
-
+ 
     public AddEmployeeFrame(MainFrame parent, EmployeeService employeeDetails) {
         this.parentFrame = parent;
         this.employeeDetails = employeeDetails;
-        
+ 
         initializeGUI();
         formPanel.setEmployeeId(employeeDetails.getNextEmployeeId());
     }
-
+ 
     private void initializeGUI() {
         setTitle("MotorPH - Add New Employee");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(600, 750);
         setLayout(new BorderLayout());
         setLocationRelativeTo(parentFrame);
-
+ 
         // Form fields layout mapping
         formPanel = new EmployeeFormPanel();
         add(formPanel, BorderLayout.CENTER);
-
+ 
         // Control buttons panel layout
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 15));
-        buttonPanel.setBackground(new Color(245, 245, 245));
-        
-        saveBtn = new JButton("Save Record");
-        saveBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        saveBtn.setBackground(new Color(40, 167, 69));
-        saveBtn.setForeground(Color.WHITE);
-        
-        cancelBtn = new JButton("Cancel");
-        cancelBtn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        
-        saveBtn.setPreferredSize(new Dimension(120, 35));
-        cancelBtn.setPreferredSize(new Dimension(100, 35));
-
+        buttonPanel.setBackground(UITheme.BG_LIGHT_GRAY);
+ 
+        saveBtn = UIComponents.primaryButton("Save Record");
+        cancelBtn = UIComponents.secondaryButton("Cancel");
+ 
         saveBtn.addActionListener(e -> onSave());
         cancelBtn.addActionListener(e -> dispose());
-
+ 
         buttonPanel.add(saveBtn);
         buttonPanel.add(cancelBtn);
         add(buttonPanel, BorderLayout.SOUTH);
     }
-
+ 
     private void onSave() {
-     try {
-         
-         String[] data = formPanel.validateAndGetFormData();
-        
+        try {
+ 
+            String[] data = formPanel.validateAndGetFormData();
+ 
             if (employeeDetails.registerEmployee(data)) {
-                parentFrame.refreshTable(); 
-                JOptionPane.showMessageDialog(this, "Employee successfully registered!", 
+                parentFrame.refreshTable();
+                JOptionPane.showMessageDialog(this, "Employee successfully registered!",
                  "System Success", JOptionPane.INFORMATION_MESSAGE);
                 dispose();
-         }
+            }
         } catch (IllegalArgumentException ex) {
-
-         JOptionPane.showMessageDialog(this, ex.getMessage(), "Input Error", JOptionPane.WARNING_MESSAGE);
+ 
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Input Error", JOptionPane.WARNING_MESSAGE);
         } catch (Exception ex) {
-
-        JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Error", JOptionPane.ERROR_MESSAGE);
+ 
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Operation Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
